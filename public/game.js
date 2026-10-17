@@ -220,27 +220,142 @@ function makeLabel(text) {
   return sprite;
 }
 
+// Cada personaje es un GATO: tronco rechoncho, orejas, ojos, bigotes,
+// cola articulada y patas. Delante es -z y su derecha es +x (igual que el arma).
 function makeAvatar(color) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.42, 1.0, 6, 14),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.6 })
-  );
-  body.position.y = 0.95;
+  const furColor = new THREE.Color(color);
+  const fur = new THREE.MeshStandardMaterial({ color: furColor, roughness: 0.85 });
+  const lightFur = new THREE.MeshStandardMaterial({
+    color: furColor.clone().lerp(new THREE.Color(0xffffff), 0.55),
+    roughness: 0.85,
+  });
+  const pink = new THREE.MeshStandardMaterial({ color: 0xff9db3, roughness: 0.8 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x241f1c, roughness: 0.6 });
+  const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+
+  // --- tronco ---
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.40, 0.55, 8, 16), fur);
+  body.position.y = 0.72;
   body.castShadow = true;
   body.userData.isBody = true;
   g.add(body);
-  const nose = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.3, 0.4),
-    new THREE.MeshStandardMaterial({ color: 0x222222 })
-  );
-  nose.position.set(0, 1.55, -0.35);
-  g.add(nose);
+
+  // barriga clara
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.30, 14, 12), lightFur);
+  belly.position.set(0, 0.62, -0.16);
+  belly.scale.set(1, 1.15, 0.6);
+  g.add(belly);
+
+  // --- patas traseras + pies ---
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.22, 5, 10), fur);
+    leg.position.set(s * 0.19, 0.24, 0);
+    leg.castShadow = true;
+    g.add(leg);
+
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), lightFur);
+    foot.position.set(s * 0.19, 0.09, -0.05);
+    foot.scale.set(1, 0.65, 1.3);
+    g.add(foot);
+  }
+
+  // --- brazos, hacia delante sujetando el arma ---
+  for (const s of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.10, 0.26, 5, 10), fur);
+    arm.position.set(s * 0.34, 1.05, -0.26);
+    arm.rotation.x = -1.15;
+    arm.castShadow = true;
+    g.add(arm);
+  }
+
+  // --- cabeza ---
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), fur);
+  head.position.y = 1.46;
+  head.castShadow = true;
+  g.add(head);
+
+  // morro claro + naricita rosa
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.20, 14, 12), lightFur);
+  muzzle.position.set(0, 1.36, -0.32);
+  muzzle.scale.set(1, 0.8, 0.75);
+  g.add(muzzle);
+
+  const catNose = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), pink);
+  catNose.position.set(0, 1.42, -0.47);
+  g.add(catNose);
+
+  // ojos con pupila
+  for (const s of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 10), eyeWhite);
+    eye.position.set(s * 0.17, 1.55, -0.33);
+    g.add(eye);
+
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), dark);
+    pupil.position.set(s * 0.175, 1.545, -0.41);
+    g.add(pupil);
+  }
+
+  // orejas (conos) con interior rosa
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.34, 4), fur);
+    ear.position.set(s * 0.23, 1.82, 0);
+    ear.rotation.y = Math.PI / 4;
+    ear.rotation.z = s * -0.20;
+    ear.castShadow = true;
+    g.add(ear);
+
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.095, 0.20, 4), pink);
+    inner.position.set(s * 0.235, 1.80, -0.06);
+    inner.rotation.y = Math.PI / 4;
+    inner.rotation.z = s * -0.20;
+    g.add(inner);
+  }
+
+  // bigotes
+  for (const s of [-1, 1]) {
+    for (const [dy, rz] of [[0.045, 0.10], [0, 0], [-0.045, -0.10]]) {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.012), lightFur);
+      w.position.set(s * 0.30, 1.38 + dy, -0.34);
+      w.rotation.z = s * rz;
+      g.add(w);
+    }
+  }
+
+  // --- cola articulada (se menea desde el bucle de dibujo) ---
+  // El primer tramo la abre hacia un lado: así se ve bien desde detrás.
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.78, 0.30);
+  let parent = tail;
+  for (let i = 0; i < 6; i++) {
+    const seg = new THREE.Group();
+    seg.position.y = i === 0 ? 0 : 0.18;
+    seg.rotation.x = 0.20;                   // cada tramo curva hacia atrás
+    seg.rotation.z = i === 0 ? 0.60 : -0.04; // el primero la abre al lado
+    const m = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.075, 0.06, 0.18, 8),
+      i > 4 ? lightFur : fur
+    );
+    m.position.y = 0.09;
+    m.castShadow = true;
+    seg.add(m);
+    parent.add(seg);
+    parent = seg;
+  }
+  g.add(tail);
+
+  // --- arma en la mano derecha (apunta hacia delante) ---
+  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.8), dark);
+  gun.position.set(0.30, 1.14, -0.36);
+  gun.castShadow = true;
+  g.add(gun);
+
   g.userData.body = body;
+  g.userData.tail = tail;
   return g;
 }
 
-const myAvatar = makeAvatar(0x2b7cff);
+const myAvatar = makeAvatar(0xf2913d); // tú: gatito naranja
 scene.add(myAvatar);
 const myLabel = makeLabel("Tú");
 myLabel.position.y = 2.3;
@@ -334,6 +449,16 @@ myChute.visible = false;
 myAvatar.add(myChute);
 
 const remotePlayers = new Map();
+
+// Menea la cola de todos los gatos (el tuyo y los de los demás)
+function wagTails(t) {
+  const a = Math.sin(t) * 0.22;
+  if (myAvatar.userData.tail) myAvatar.userData.tail.rotation.z = a;
+  for (const r of remotePlayers.values()) {
+    const tail = r.group.userData.tail;
+    if (tail) tail.rotation.z = a;
+  }
+}
 
 // ------------------------- Estado local -------------------------
 const pos = new THREE.Vector3(0, 0, 0);
@@ -1455,6 +1580,8 @@ function animate() {
     r.group.rotation.y = r.target.ry;
     if (r.chute) r.chute.visible = r.target.y > 3;
   }
+
+  wagTails(performance.now() * 0.004);
 
   for (let i = tracers.length - 1; i >= 0; i--) {
     tracers[i].t += dt;

@@ -3,6 +3,9 @@
 Battle royale **3D multijugador** (prototipo) hecho con **Three.js** y **WebSockets**.
 Corre en el navegador y funciona en red local para jugar con amigos.
 
+Los personajes son **gatitos** 🐱: cada jugador tiene su propio color, orejas, bigotes
+y una cola que se menea. Tú eres el gatito **naranja**.
+
 ## ▶️ Cómo ejecutar el juego (lo más fácil)
 
 En el **Escritorio** tienes un acceso directo: **`Juego Vipe`**.
