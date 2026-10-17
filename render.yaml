@@ -1,0 +1,14 @@
+# Configuracion de despliegue en Render (https://render.com)
+# Render lee este archivo solo: crea el servicio web automaticamente.
+services:
+  - type: web
+    name: juego-vipe
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

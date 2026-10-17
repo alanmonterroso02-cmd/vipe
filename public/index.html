@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Juego Vipe — Battle Royale</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.169.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="crosshair">+</div>
+
+  <div id="hud">
+    <div id="topbar">
+      <span id="alive">0 vivos</span>
+      <span id="kills">0 bajas</span>
+      <span id="matchTime">3:30</span>
+      <span id="zoneInfo">Zona: grande</span>
+    </div>
+    <div id="hpbar"><div id="hpfill"></div></div>
+    <div id="armorbar"><div id="armorfill"></div></div>
+    <div id="weaponHud">
+      <span id="weaponName">Sin arma</span>
+      <span id="ammo">busca 🔫</span>
+    </div>
+    <div id="reloading" class="hidden">Recargando…</div>
+    <div id="zoneMsg"></div>
+    <div id="feed"></div>
+  </div>
+
+  <!-- Controles táctiles (solo móvil) -->
+  <div id="touch" class="hidden">
+    <div id="stick"><div id="knob"></div></div>
+    <div id="btns">
+      <button id="btnWeapon" class="tbtn sm">🔫</button>
+      <button id="btnReload" class="tbtn sm">⟳</button>
+      <button id="btnJump" class="tbtn sm">⤒</button>
+      <button id="btnRun" class="tbtn sm">»</button>
+    </div>
+    <div id="aimstick"><div id="aimknob">✚</div></div>
+  </div>
+
+  <div id="menu">
+    <h1>JUEGO VIPE</h1>
+    <p class="sub">Battle Royale 3D multijugador</p>
+    <input id="nameInput" maxlength="12" placeholder="Tu nombre" value="Jugador" />
+    <button id="playBtn">Jugar</button>
+    <p class="small" id="helpDesktop">
+      <b>WASD</b> mover · <b>Ratón</b> mirar · <b>Clic</b> disparar ·
+      <b>1 2 3</b> / <b>Rueda</b> cambiar arma · <b>R</b> recargar ·
+      <b>F</b> botiquín · <b>G</b> chaleco ·
+      <b>Espacio</b> saltar · <b>Shift</b> correr · <b>O</b> ajustes · <b>ESC</b> salir
+    </p>
+    <p class="small hidden" id="helpMobile">
+      <b>Joystick izq.</b> moverte (a tope = correr) · <b>Joystick der.</b> apuntar y disparar ·
+      <b>🩹 🛡️</b> usar objetos · <b>🔫</b> arma · <b>⟳</b> recargar ·
+      <b>⤒</b> saltar · <b>»</b> correr fijo
+    </p>
+    <p class="small">Pasa por encima del loot para recogerlo. Comparte <b>http://TU-IP:3000</b> con tus amigos.</p>
+  </div>
+
+  <div id="dead" class="hidden">
+    <h2>¡Eliminado!</h2>
+    <p id="deadBy"></p>
+    <p class="small" id="deadWait">Estás fuera. Vuelves en la próxima partida…</p>
+    <button id="leaveBtn">Salir al menú</button>
+  </div>
+
+  <!-- Fin de partida: ganador -->
+  <div id="winner" class="hidden">
+    <h2>🏆 ¡GANADOR!</h2>
+    <p id="winnerName"></p>
+    <p class="small" id="winnerNext"></p>
+  </div>
+
+  <!-- Minimapa (radar) -->
+  <canvas id="minimap" width="200" height="200"></canvas>
+
+  <!-- Inventario: usar botiquín / chaleco -->
+  <div id="inv">
+    <button id="btnMed" class="invbtn" title="Usar botiquín (F)">🩹<span id="medCount">0</span></button>
+    <button id="btnShield" class="invbtn" title="Usar chaleco (G)">🛡️<span id="shieldCount">0</span></button>
+  </div>
+
+  <!-- Icono de ajustes (siempre visible) -->
+  <button id="gearBtn" title="Ajustes" aria-label="Ajustes">⚙</button>
+
+  <div id="settings" class="hidden">
+    <h3>Ajustes</h3>
+    <label>Sensibilidad de cámara <span class="val" id="sensVal">100%</span>
+      <input id="sensRange" type="range" min="10" max="100" value="50" />
+    </label>
+    <label>Velocidad del joystick de apuntado <span class="val" id="gainVal">5.5</span>
+      <input id="gainRange" type="range" min="10" max="100" value="55" />
+    </label>
+    <label class="row"><input id="autoAimChk" type="checkbox" checked /> Auto apuntado</label>
+    <label>Fuerza del auto apuntado <span class="val" id="aaVal">60%</span>
+      <input id="aaRange" type="range" min="0" max="100" value="60" />
+    </label>
+    <p class="hint">
+      El auto apuntado engancha suavemente al enemigo más cercano a la mira
+      mientras disparas o usas el joystick de apuntado. La mira se pone
+      <b>dorada</b> cuando lo tiene fijado.
+    </p>
+    <button id="closeSettings">Cerrar</button>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
