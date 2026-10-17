@@ -971,11 +971,12 @@ function upsertRemote(p) {
     chute.visible = false;
     group.add(chute);
     group.userData.id = p.id;
-    r = { group, label, chute, target: { x: p.x, y: p.y, z: p.z, ry: p.ry }, hp: p.hp };
+    r = { group, label, chute, name: p.name, target: { x: p.x, y: p.y, z: p.z, ry: p.ry }, hp: p.hp };
     remotePlayers.set(p.id, r);
   }
   r.target = { x: p.x, y: p.y, z: p.z, ry: p.ry };
   r.hp = p.hp;
+  r.name = p.name; // el nombre puede cambiar si el jugador lo edita al entrar
   r.group.visible = p.alive;
 }
 
@@ -1163,6 +1164,7 @@ function applyAutoAim(dt) {
 const mmCanvas = document.getElementById("minimap");
 const mmCtx = mmCanvas ? mmCanvas.getContext("2d") : null;
 const MM_RANGE = 170; // unidades del mundo visibles del centro al borde
+const MM_NAME_FS = isTouch ? 17 : 12; // px del nombre en el radar (el canvas mide 200 y se ve más pequeño)
 let mmTimer = 0;
 
 function drawMinimap() {
@@ -1211,6 +1213,20 @@ function drawMinimap() {
     ctx.fillStyle = near ? "#ff3b30" : "rgba(255,138,128,.85)";
     ctx.fill();
     if (near) { ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 1.5; ctx.stroke(); }
+
+    // nombre del jugador, debajo de su punto
+    if (r.name) {
+      const ty = cy + dz + (near ? 5.5 : 3.5) + 3;
+      ctx.font = `bold ${MM_NAME_FS}px Segoe UI, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = "rgba(0,0,0,.85)";
+      ctx.strokeText(r.name, cx + dx, ty);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(r.name, cx + dx, ty);
+    }
   }
 
   // tú (flecha blanca que gira con la cámara)

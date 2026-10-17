@@ -178,6 +178,8 @@ muestra un radio de **170 unidades** a tu alrededor:
 - **Flecha blanca** en el centro: tú. Gira según hacia dónde miras.
 - **Puntos rojos**: los otros jugadores. Se hacen **más grandes y con borde
   blanco** cuando están a menos de 60 unidades (los "cercanos").
+- **Nombre**: debajo de cada punto rojo verás **el nombre de ese jugador**,
+  para saber quién es quién de un vistazo.
 - **Aro azul**: el borde de la zona segura.
 - **Fondo rojizo + flecha azul**: aparece cuando estás **fuera de la zona**,
   y la flecha señala hacia el centro para que sepas hacia dónde correr.
