@@ -246,6 +246,93 @@ const myLabel = makeLabel("Tú");
 myLabel.position.y = 2.3;
 myAvatar.add(myLabel);
 
+// ------------------------- Helicóptero + paracaídas -------------------------
+function makeHelicopter() {
+  const g = new THREE.Group();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2c3138, roughness: 0.6 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x7fd4ff, roughness: 0.15, metalness: 0.3 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 4.4), dark);
+  body.castShadow = true;
+  g.add(body);
+
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.2, 1.5), glass);
+  cabin.position.set(0, 0.25, 1.9);
+  g.add(cabin);
+
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 3.4), dark);
+  tail.position.set(0, 0.45, -3.3);
+  g.add(tail);
+
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.3, 0.9), dark);
+  fin.position.set(0, 1.05, -4.7);
+  g.add(fin);
+
+  for (const s of [-1, 1]) {
+    const skid = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 4.2), dark);
+    skid.position.set(s * 0.95, -1.15, 0.2);
+    g.add(skid);
+  }
+
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 6), dark);
+  mast.position.set(0, 1.2, 0);
+  g.add(mast);
+
+  const rotor = new THREE.Group();
+  rotor.position.y = 1.5;
+  for (let i = 0; i < 4; i++) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(9, 0.06, 0.4), dark);
+    blade.rotation.y = (i / 4) * Math.PI * 2;
+    rotor.add(blade);
+  }
+  g.add(rotor);
+
+  const tailRotor = new THREE.Group();
+  tailRotor.position.set(0.35, 0.75, -4.5);
+  for (let i = 0; i < 2; i++) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.5, 0.28), dark);
+    b.rotation.x = (i / 2) * Math.PI;
+    tailRotor.add(b);
+  }
+  g.add(tailRotor);
+
+  g.userData.rotor = rotor;
+  g.userData.tailRotor = tailRotor;
+  return g;
+}
+
+function makeParachute() {
+  const g = new THREE.Group();
+  const canopy = new THREE.Mesh(
+    new THREE.SphereGeometry(1.7, 14, 9, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0xff5a3c, roughness: 0.75, side: THREE.DoubleSide })
+  );
+  canopy.position.y = 2.6;
+  canopy.scale.set(1, 0.65, 1);
+  canopy.castShadow = true;
+  g.add(canopy);
+
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+  for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(dx * 1.1, 2.4, dz * 1.1),
+      new THREE.Vector3(0, 1.5, 0),
+    ]);
+    g.add(new THREE.Line(geo, lineMat));
+  }
+  return g;
+}
+
+const heli = makeHelicopter();
+heli.visible = false;
+scene.add(heli);
+let heliTimer = 0;
+const heliDir = new THREE.Vector3(1, 0, 0);
+
+const myChute = makeParachute();
+myChute.visible = false;
+myAvatar.add(myChute);
+
 const remotePlayers = new Map();
 
 // ------------------------- Estado local -------------------------
@@ -256,6 +343,7 @@ let pitch = -0.25;
 let onGround = true;
 let playing = false;
 let alive = true;
+let dropping = false; // ¿estás cayendo en paracaídas desde el helicóptero?
 
 // ------------------------- Armas -------------------------
 // cd = tiempo entre disparos · pellets = balas por disparo · spread = dispersión
@@ -582,6 +670,73 @@ $("leaveBtn")?.addEventListener("click", () => {
   alive = false;
 });
 
+// ------------------------- Salto en paracaídas -------------------------
+const DROP_ALT = 105;   // altura desde la que saltas (unidades)
+const PARA_FALL = 9;    // velocidad de descenso con paracaídas (u/s)
+const HELI_SPEED = 46;  // velocidad del helicóptero (u/s)
+
+// ¿Hay algún edificio (sólido) en ese punto?
+function isSolidAt(x, z, margin) {
+  for (const b of solids) {
+    if (x > b.minX - margin && x < b.maxX + margin && z > b.minZ - margin && z < b.maxZ + margin) return true;
+  }
+  return false;
+}
+
+// Elige un punto libre y dentro de la zona segura para aterrizar
+function randomDropSpot() {
+  const zr = lastZone && lastZone.r ? lastZone.r : 300;
+  const limit = Math.max(40, Math.min(240, zr * 0.8));
+  let fallback = { x: 0, z: 0 };
+  for (let t = 0; t < 120; t++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = Math.sqrt(Math.random()) * limit;
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    fallback = { x, z };
+    if (!isSolidAt(x, z, 2.5)) return { x, z };
+  }
+  return fallback;
+}
+
+// El helicóptero pasa por encima del punto de salto y se aleja
+function heliFlyOver(x, z) {
+  const ang = Math.random() * Math.PI * 2;
+  heliDir.set(Math.cos(ang), 0, Math.sin(ang)).normalize();
+  heli.position.set(x - heliDir.x * 9, DROP_ALT + 7, z - heliDir.z * 9);
+  heli.rotation.y = Math.atan2(heliDir.x, heliDir.z);
+  heliTimer = 0;
+  heli.visible = true;
+}
+
+// Empieza el salto: apareces en el aire y bajas en paracaídas
+function startDrop() {
+  const s = randomDropSpot();
+  pos.set(s.x, DROP_ALT, s.z);
+  vel.set(0, 0, 0);
+  pitch = -0.55; // mirando hacia el suelo
+  onGround = false;
+  dropping = true;
+  myChute.visible = true;
+  wantShoot = false;
+  triggerArmed = false;
+  aiming = false;
+  aimVec.x = 0;
+  aimVec.y = 0;
+  heliFlyOver(s.x, s.z);
+  $("dropHint")?.classList.remove("hidden");
+}
+
+// Tocas tierra: vuelves al juego normal
+function endDrop() {
+  dropping = false;
+  pos.y = 0;
+  vel.y = 0;
+  onGround = true;
+  myChute.visible = false;
+  $("dropHint")?.classList.add("hidden");
+  addFeed("¡Tocaste tierra! Busca un arma 🔫");
+}
+
 // Resucitar al jugador: se usa al empezar una partida nueva
 function revive() {
   alive = true;
@@ -606,6 +761,7 @@ function revive() {
   $("winner").classList.add("hidden");
   setTouchVisible(true);
   if (!isTouch) renderer.domElement.requestPointerLock();
+  startDrop(); // empiezas cayendo desde un helicóptero
 }
 
 $("btnMed")?.addEventListener("click", () => useItem("medkit"));
@@ -811,8 +967,11 @@ function upsertRemote(p) {
     const label = makeLabel(p.name);
     label.position.y = 2.3;
     group.add(label);
+    const chute = makeParachute();
+    chute.visible = false;
+    group.add(chute);
     group.userData.id = p.id;
-    r = { group, label, target: { x: p.x, y: p.y, z: p.z, ry: p.ry }, hp: p.hp };
+    r = { group, label, chute, target: { x: p.x, y: p.y, z: p.z, ry: p.ry }, hp: p.hp };
     remotePlayers.set(p.id, r);
   }
   r.target = { x: p.x, y: p.y, z: p.z, ry: p.ry };
@@ -842,6 +1001,9 @@ function onDeath(killer) {
   aiming = false;
   aimVec.x = 0;
   aimVec.y = 0;
+  dropping = false;
+  myChute.visible = false;
+  $("dropHint")?.classList.add("hidden");
   document.exitPointerLock?.();
   setTouchVisible(false);
   $("deadBy").textContent = killer ? `Te eliminó ${killer}` : "Te quedaste fuera de la zona";
@@ -1140,7 +1302,7 @@ function animate() {
     }
 
     // --- Auto apuntado hacia el enemigo ---
-    if (settings.autoAim && hasWeapon() && (aiming || wantShoot)) applyAutoAim(dt);
+    if (settings.autoAim && hasWeapon() && !dropping && (aiming || wantShoot)) applyAutoAim(dt);
 
     // Entradas combinadas (teclado + joystick)
     let fwd = 0, str = 0;
@@ -1163,7 +1325,7 @@ function animate() {
     else if (stickFwd < 0.6) autoRunStick = false;
 
     const running = keys["ShiftLeft"] || keys["ShiftRight"] || runToggle || autoRunStick;
-    const speed = running ? 10 : 6.5;
+    const speed = dropping ? 13 : running ? 10 : 6.5;
     const dir = new THREE.Vector3()
       .addScaledVector(forward, fwd)
       .addScaledVector(right, str);
@@ -1172,16 +1334,27 @@ function animate() {
     vel.x = dir.x;
     vel.z = dir.z;
 
-    if ((keys["Space"] || jumpQueued) && onGround) { vel.y = 7.5; onGround = false; }
-    jumpQueued = false;
-    vel.y -= 22 * dt;
+    if (dropping) {
+      // Paracaídas: desciendes a velocidad constante mientras te deslizas
+      vel.y = -PARA_FALL;
+      jumpQueued = false;
+    } else {
+      if ((keys["Space"] || jumpQueued) && onGround) { vel.y = 7.5; onGround = false; }
+      jumpQueued = false;
+      vel.y -= 22 * dt;
+    }
 
     pos.x += vel.x * dt;
     pos.z += vel.z * dt;
     pos.y += vel.y * dt;
-    if (pos.y <= 0) { pos.y = 0; vel.y = 0; onGround = true; }
 
-    collide(pos);
+    if (pos.y <= 0) {
+      if (dropping) endDrop();
+      else { pos.y = 0; vel.y = 0; onGround = true; }
+    }
+
+    // En el aire no chocas con los edificios; al tocar tierra sí
+    if (!dropping) collide(pos);
 
     // --- Recarga ---
     if (reloading && hasWeapon()) {
@@ -1194,9 +1367,9 @@ function animate() {
       }
     }
 
-    // --- Disparo (solo si llevas un arma) ---
+    // --- Disparo (solo si llevas un arma y ya has aterrizado) ---
     shootCooldown -= dt;
-    if (hasWeapon()) {
+    if (hasWeapon() && !dropping) {
       const wp = WEAPONS[weaponIndex];
       const wantsFire = wp.auto ? wantShoot : (triggerArmed && wantShoot);
       if (wantsFire && !reloading && shootCooldown <= 0) {
@@ -1216,7 +1389,7 @@ function animate() {
 
     // --- Recoger loot del suelo al pasar cerca ---
     pickupTimer -= dt;
-    if (pickupTimer <= 0) {
+    if (pickupTimer <= 0 && !dropping) {
       pickupTimer = 0.25;
       let nearest = null, nd = 2.6;
       for (const [lid, g] of lootMeshes) {
@@ -1240,13 +1413,31 @@ function animate() {
     g.position.y = Math.sin(tsec * 2 + g.userData.phase) * 0.12;
   }
 
+  // --- Helicóptero: pasa volando y se aleja ---
+  if (heli.visible) {
+    heliTimer += dt;
+    heli.position.addScaledVector(heliDir, HELI_SPEED * dt);
+    heli.position.y = DROP_ALT + 7 + Math.sin(heliTimer * 2) * 0.6;
+    heli.userData.rotor.rotation.y += dt * 26;
+    heli.userData.tailRotor.rotation.x += dt * 40;
+    if (heliTimer > 7) heli.visible = false;
+  }
+
   myAvatar.position.copy(pos);
   myAvatar.rotation.y = yaw;
   myAvatar.visible = alive;
 
+  // Aviso de paracaídas con la altura restante
+  if (dropping) {
+    const dh = $("dropHint");
+    if (dh) dh.textContent = "🪂 Paracaídas · altura " + Math.max(0, Math.round(pos.y)) + " m";
+  }
+  crosshairEl.style.display = dropping ? "none" : "";
+
   for (const r of remotePlayers.values()) {
     r.group.position.lerp(new THREE.Vector3(r.target.x, r.target.y, r.target.z), 0.22);
     r.group.rotation.y = r.target.ry;
+    if (r.chute) r.chute.visible = r.target.y > 3;
   }
 
   for (let i = tracers.length - 1; i >= 0; i--) {
@@ -1262,7 +1453,7 @@ function animate() {
   const camDir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(pitch, yaw, 0, "YXZ"));
   const camRight = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
   const focus = new THREE.Vector3(pos.x, pos.y + 1.55, pos.z).addScaledVector(camRight, 0.8);
-  camera.position.copy(focus).addScaledVector(camDir, -6.2);
+  camera.position.copy(focus).addScaledVector(camDir, dropping ? -9 : -6.2);
   if (camera.position.y < 0.7) camera.position.y = 0.7;
   camera.lookAt(focus.x + camDir.x, focus.y + camDir.y, focus.z + camDir.z);
 

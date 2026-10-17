@@ -92,6 +92,14 @@ canvas { display: block; }
   opacity: 0; transition: opacity .2s; text-align: center; padding: 0 10px;
 }
 
+#dropHint {
+  position: absolute; top: 86px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.5); color: #fff; font-weight: 700; font-size: 14px;
+  padding: 6px 16px; border-radius: 20px; text-shadow: 0 1px 3px #000;
+  white-space: nowrap;
+}
+body.touch #dropHint { top: 128px; font-size: 12px; }
+
 #feed {
   position: absolute; right: 14px; top: 62px; text-align: right;
   font-size: 13px; line-height: 1.6; font-weight: 600; max-width: 60vw;
