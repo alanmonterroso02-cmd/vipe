@@ -10,3 +10,6 @@ Thumbs.db
 # Entorno local
 .env
 .env.local
+
+# Accesos directos de Windows
+*.lnk
