@@ -367,7 +367,7 @@ function makeAvatar(color) {
   // --- cola articulada (se menea desde el bucle de dibujo) ---
   // El primer tramo la abre hacia un lado: así se ve bien desde detrás.
   const tail = new THREE.Group();
-  tail.position.set(0, 0.16, 0.30);
+  tail.position.set(0, -0.08, 0.28);
   let parent = tail;
   for (let i = 0; i < 6; i++) {
     const seg = new THREE.Group();
