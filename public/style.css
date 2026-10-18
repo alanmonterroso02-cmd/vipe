@@ -15,6 +15,31 @@ canvas { display: block; }
 }
 #crosshair.hit { color: #ff3b30; transform: translate(-50%, -50%) scale(1.6); }
 #crosshair.lock { color: #ffd44d; text-shadow: 0 0 9px #ffb300, 0 0 4px #000; }
+/* Al apuntar se dibuja un circulito alrededor de la mira */
+#crosshair::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 0; height: 0; border: 0 solid rgba(255,255,255,.75); border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width .12s, height .12s, border-width .12s;
+}
+body.ads #crosshair::after { width: 30px; height: 30px; border-width: 1.5px; }
+
+/* Visor del francotirador (solo al mirar por su mira) */
+#scope {
+  position: fixed; inset: 0; z-index: 4; display: none; pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(200,235,255,.13) 0 25.5vh, rgba(200,235,255,0) 26vh),
+    radial-gradient(circle at 50% 50%,
+      rgba(0,0,0,0) 0 26vh,
+      rgba(0,0,0,.55) 26vh 26.7vh,
+      rgba(0,0,0,.95) 27.4vh 100%);
+}
+body.ads-scope #scope { display: block; }
+#scope::before, #scope::after { content: ""; position: absolute; background: rgba(0,0,0,.8); }
+#scope::before { left: 50%; top: 0; bottom: 0; width: 1px; margin-left: -.5px; }
+#scope::after { top: 50%; left: 0; right: 0; height: 1px; margin-top: -.5px; }
+/* con el visor puesto, la cruz normal sobra */
+body.ads-scope #crosshair { display: none !important; }
 
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 6; color: #fff; }
 

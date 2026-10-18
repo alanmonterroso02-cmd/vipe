@@ -71,6 +71,7 @@ Funciona en cualquier móvil (Android / iPhone) con navegador moderno:
 | **Joystick de apuntado** (abajo-derecha) | Girar la cámara con precisión **y disparar** a la vez |
 | Deslizar el dedo en pantalla | Girar rápido (giros amplios) |
 | Botón **🔫** | Cambiar de arma |
+| Botón **🎯** | Apuntar con la mira (se queda puesta hasta que la toques otra vez) |
 | Botón **⟳** | Recargar |
 | Botones **🩹 / 🛡️** (abajo-centro) | Usar botiquín / chaleco |
 | Botón **⤒** | Saltar |
@@ -90,6 +91,7 @@ se abra como una app sin barras del navegador.
 | W A S D | Moverse |
 | Ratón | Mirar |
 | Clic izquierdo | Disparar |
+| Clic derecho | Apuntar con la mira (zoom) |
 | 1 · 2 · 3 | Elegir arma (o rueda del ratón) |
 | R | Recargar |
 | F | Usar botiquín |
@@ -176,6 +178,20 @@ La munición es **infinita** (solo cuentas las balas del cargador); al vaciarlo
 se recarga automáticamente. Al empezar una **partida nueva vuelves a estar
 desarmado** y hay que volver a buscar armas.
 
+### 🔭 Miras y apuntar con zoom
+
+Cada arma tiene **su propia mira**: el **francotirador** una **telescópica**, el
+**rifle** un **punto rojo** y la **escopeta** solo el punto del cañón (sin óptica).
+Además puedes **apuntar con zoom (ADS)**:
+
+- **PC:** mantén pulsado el **clic derecho**.
+- **Móvil:** toca el botón **🎯** (se queda puesta hasta que lo quites).
+
+Mientras apuntas, la cámara **se acerca al hombro** y hace **zoom** (con el
+francotirador mucho más: aparece su **visor** con la cruz), el arma es **más
+precisa** (la dispersión se reduce) y **te mueves más despacio**. Los demás
+jugadores ven **qué arma llevas** en la mano.
+
 ## 🗺️ Minimapa (radar)
 
 Arriba a la **izquierda** (en todos los dispositivos) hay un **radar** que
@@ -223,7 +239,7 @@ juego_vipe/
 
 ## Ideas para continuar
 
-- Más loot: granadas, miras, munición limitada, cascos.
+- Más loot: granadas, munición limitada, cascos, acoplar/quitar miras.
 - Escudos y botiquines con animación de uso y tiempo de curación.
 - Modelos 3D reales (exportados) en vez de cápsulas.
 - Zona con forma y tiempos configurables, escudos.

@@ -73,4 +73,9 @@ No hay build, lint ni framework de tests. Verificación manual:
   `roundOver` / `roundStart`). Durante la partida **no** hay respawn: al morir esperas a la
   siguiente. El servidor también envía `timeLeft` y `winner` en `state`.
 - **Implementado**: salto en paracaídas desde el helicóptero al empezar/renacer (ver arriba).
+- **Implementado**: **miras por arma** (francotirador telescópica, rifle de punto rojo, escopeta
+  sin óptica) y **apuntar con zoom** (ADS) con clic derecho en PC o botón **🎯** en móvil: la
+  cámara se acerca al hombro, baja el FOV (el francotirador muestra su visor), reduce la
+  dispersión y la velocidad de movimiento. El cliente manda su arma en `state` (`w`) y el
+  servidor la reenvía para que los demás vean el arma en la mano de cada jugador.
 - Probado con Node 24 / npm 11 en Windows.

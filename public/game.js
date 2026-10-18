@@ -220,6 +220,88 @@ function makeLabel(text) {
   return sprite;
 }
 
+// ------------------------- Armas (modelos con mira) -------------------------
+// Cada arma es un grupo de cajas/cilindros. Delante es -z (lo mismo que el gato).
+// Las geometrías se cachean: todos los jugadores comparten las mismas.
+const GUN_MAT = {
+  metal: new THREE.MeshStandardMaterial({ color: 0x35363c, roughness: 0.5, metalness: 0.45 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x1b1c20, roughness: 0.7 }),
+  grip: new THREE.MeshStandardMaterial({ color: 0x4a3626, roughness: 0.9 }),
+  brass: new THREE.MeshStandardMaterial({ color: 0xd9b44a, roughness: 0.35, metalness: 0.8 }),
+  lens: new THREE.MeshStandardMaterial({ color: 0x8fd0ff, emissive: 0x14405c, emissiveIntensity: 0.8, roughness: 0.12, metalness: 0.5 }),
+  dot: new THREE.MeshStandardMaterial({ color: 0xff4b3a, emissive: 0xff2a15, emissiveIntensity: 1.4 }),
+};
+const GUN_GEO = {};
+function gbox(w, h, d, x, y, z, mat) {
+  const k = "b" + w + "," + h + "," + d;
+  const geo = GUN_GEO[k] || (GUN_GEO[k] = new THREE.BoxGeometry(w, h, d));
+  const m = new THREE.Mesh(geo, mat || GUN_MAT.metal);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  return m;
+}
+function gcyl(r, len, x, y, z, mat) {
+  const k = "c" + r + "," + len;
+  const geo = GUN_GEO[k] || (GUN_GEO[k] = new THREE.CylinderGeometry(r, r, len, 10));
+  const m = new THREE.Mesh(geo, mat || GUN_MAT.metal);
+  m.rotation.x = Math.PI / 2; // el cañón apunta hacia delante
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  return m;
+}
+
+// kind: 0 rifle (mira de punto rojo) · 1 escopeta (solo punto de mira) ·
+//       2 francotirador (mira telescópica)
+function makeGun(kind) {
+  const g = new THREE.Group();
+
+  if (kind === 0) {
+    // ---------------- RIFLE ----------------
+    g.add(gbox(0.13, 0.15, 0.56, 0, 0.02, -0.12));                  // cuerpo
+    g.add(gcyl(0.042, 0.40, 0, 0.03, -0.55));                       // cañón
+    g.add(gbox(0.11, 0.13, 0.24, 0, -0.01, -0.30, GUN_MAT.dark));   // guardamanos
+    g.add(gbox(0.09, 0.20, 0.13, 0, -0.15, -0.09, GUN_MAT.dark));   // cargador
+    g.add(gbox(0.08, 0.15, 0.10, 0, -0.14, 0.08, GUN_MAT.grip));    // empuñadura
+    g.add(gbox(0.09, 0.12, 0.30, 0, 0.01, 0.30, GUN_MAT.dark));     // culata
+    // mira de punto rojo
+    g.add(gbox(0.09, 0.05, 0.10, 0, 0.11, -0.14, GUN_MAT.dark));    // base
+    g.add(gcyl(0.05, 0.09, 0, 0.17, -0.14, GUN_MAT.dark));          // tubo
+    g.add(gbox(0.02, 0.05, 0.02, 0, 0.21, -0.185, GUN_MAT.dark));   // soporte del punto
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), GUN_MAT.dot);
+    dot.position.set(0, 0.225, -0.185);                             // punto rojo a la vista
+    g.add(dot);
+  } else if (kind === 1) {
+    // ---------------- ESCOPETA ----------------
+    g.add(gbox(0.15, 0.16, 0.46, 0, 0.02, -0.08, GUN_MAT.dark));    // cuerpo
+    g.add(gcyl(0.058, 0.44, 0, 0.05, -0.49));                       // cañón
+    g.add(gbox(0.14, 0.11, 0.20, 0, -0.08, -0.30, GUN_MAT.grip));   // corredera
+    g.add(gbox(0.10, 0.15, 0.28, 0, -0.01, 0.28, GUN_MAT.grip));    // culata
+    // punto de mira (bolita dorada)
+    const bead = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), GUN_MAT.brass);
+    bead.position.set(0, 0.11, -0.72);
+    g.add(bead);
+  } else {
+    // ---------------- FRANCOTIRADOR ----------------
+    g.add(gbox(0.12, 0.14, 0.60, 0, 0.02, -0.12, GUN_MAT.dark));    // cuerpo
+    g.add(gcyl(0.035, 0.58, 0, 0.03, -0.66));                       // cañón largo
+    g.add(gcyl(0.055, 0.10, 0, 0.03, -0.98));                       // bocacha
+    g.add(gbox(0.08, 0.17, 0.13, 0, -0.13, -0.06, GUN_MAT.dark));   // cargador
+    g.add(gbox(0.08, 0.14, 0.10, 0, -0.13, 0.12, GUN_MAT.grip));    // empuñadura
+    g.add(gbox(0.09, 0.13, 0.32, 0, 0.01, 0.32, GUN_MAT.grip));     // culata
+    // mira telescópica
+    g.add(gbox(0.05, 0.10, 0.06, 0, 0.11, -0.30, GUN_MAT.dark));    // anilla delantera
+    g.add(gbox(0.05, 0.10, 0.06, 0, 0.11, -0.06, GUN_MAT.dark));    // anilla trasera
+    g.add(gcyl(0.075, 0.42, 0, 0.20, -0.18, GUN_MAT.dark));         // tubo
+    g.add(gcyl(0.088, 0.06, 0, 0.20, -0.40, GUN_MAT.dark));         // campana
+    const lensF = gcyl(0.082, 0.02, 0, 0.20, -0.43, GUN_MAT.lens);  // cristal delantero
+    const lensB = gcyl(0.07, 0.02, 0, 0.20, 0.03, GUN_MAT.lens);    // cristal trasero
+    g.add(lensF);
+    g.add(lensB);
+  }
+
+  return g;
+}
+
 // Medidas del gatito (en unidades del mundo)
 const CAT_HIP_Y = 0.62;      // altura de la cadera de pie (2 patas)
 const CAT_RUN_HIP_Y = 0.72;  // altura de la cadera a 4 patas
@@ -358,11 +440,12 @@ function makeAvatar(color) {
     arms.push(arm);
   }
 
-  // --- arma, delante y a la derecha ---
-  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.8), dark);
-  gun.position.set(0.28, 0.36, -0.50);
-  gun.castShadow = true;
-  rig.add(gun);
+  // --- armas: se montan las 3 con su mira y se enseña la que llevas ---
+  const gunMount = new THREE.Group();
+  gunMount.position.set(0.28, 0.36, -0.50);
+  rig.add(gunMount);
+  const guns = [makeGun(0), makeGun(1), makeGun(2)];
+  for (const gu of guns) { gu.visible = false; gunMount.add(gu); }
 
   // --- cola articulada (se menea desde el bucle de dibujo) ---
   // El primer tramo la abre hacia un lado: así se ve bien desde detrás.
@@ -392,7 +475,8 @@ function makeAvatar(color) {
   g.userData.head = head;
   g.userData.arms = arms;
   g.userData.legs = legs;
-  g.userData.gun = gun;
+  g.userData.gun = gunMount;
+  g.userData.guns = guns;
   g.userData.cat = { quad: 0, phase: 0 }; // estado de la animacion
   return g;
 }
@@ -597,6 +681,13 @@ let triggerArmed = false; // armas semiautomáticas: solo disparan al pulsar, no
 
 function hasWeapon() { return weaponIndex >= 0 && owned[weaponIndex]; }
 
+// Enseña en el gato el arma que lleva (o ninguna si va desarmado)
+function showWeapon(group, i) {
+  const gs = group && group.userData && group.userData.guns;
+  if (!gs) return;
+  for (let k = 0; k < gs.length; k++) gs[k].visible = (k === i);
+}
+
 // Coge un arma del suelo (caja 🔫)
 function takeWeapon(i) {
   if (!WEAPONS[i]) return;
@@ -640,7 +731,9 @@ function startReload() {
 function updateWeaponHUD() {
   const n = document.getElementById("weaponName");
   const a = document.getElementById("ammo");
-  if (!hasWeapon()) {
+  const ok = hasWeapon();
+  showWeapon(myAvatar, ok ? weaponIndex : -1); // el arma que se ve en la mano
+  if (!ok) {
     if (n) n.textContent = "Sin arma";
     if (a) a.textContent = "busca 🔫";
     return;
@@ -688,6 +781,9 @@ const stickVec = { x: 0, y: 0 };
 let runToggle = false;
 let jumpQueued = false;
 let wantShoot = false;
+let wantAds = false;   // quieres apuntar con la mira (clic derecho / botón 🎯)
+let ads = false;       // estás apuntando ahora mismo
+let adsBlend = 0;      // 0 = normal · 1 = ojo pegado a la mira (se mezcla suave)
 // Joystick de apuntado (derecha)
 const aimVec = { x: 0, y: 0 };
 let aiming = false;
@@ -849,8 +945,14 @@ addEventListener("mousemove", (e) => {
 
 addEventListener("mousedown", (e) => {
   if (e.button === 0 && !isTouch) { wantShoot = true; triggerArmed = true; }
+  if (e.button === 2 && !isTouch) wantAds = true; // clic derecho = mirar por la mira
 });
-addEventListener("mouseup", (e) => { if (e.button === 0 && !isTouch) wantShoot = false; });
+addEventListener("mouseup", (e) => {
+  if (e.button === 0 && !isTouch) wantShoot = false;
+  if (e.button === 2 && !isTouch) wantAds = false;
+});
+// que el clic derecho no abra el menú del navegador
+addEventListener("contextmenu", (e) => { if (playing) e.preventDefault(); });
 
 document.addEventListener("pointerlockchange", () => {
   if (isTouch) return;
@@ -955,6 +1057,7 @@ function startDrop() {
   wantShoot = false;
   triggerArmed = false;
   aiming = false;
+  wantAds = false;
   aimVec.x = 0;
   aimVec.y = 0;
   heliFlyOver(s.x, s.z);
@@ -1010,6 +1113,7 @@ function openSettings(open) {
     wantShoot = false;
     triggerArmed = false;
     aiming = false;
+    wantAds = false;
     aimVec.x = 0;
     aimVec.y = 0;
     const k = document.getElementById("aimknob");
@@ -1064,6 +1168,13 @@ if (isTouch) {
   }, null);
   bindButton("btnWeapon", () => nextWeapon(), null);
   bindButton("btnReload", () => startReload(), null);
+  // Mira: se queda puesta hasta que lo vuelvas a tocar
+  const aimBtn = $("btnAim");
+  if (aimBtn) aimBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    wantAds = !wantAds;
+    aimBtn.classList.toggle("on", wantAds);
+  });
 }
 
 // ------------------------- Red -------------------------
@@ -1213,6 +1324,8 @@ function upsertRemote(p) {
   r.hp = p.hp;
   r.name = p.name; // el nombre puede cambiar si el jugador lo edita al entrar
   r.group.visible = p.alive;
+  // enseña el arma que lleva (el servidor manda w = índice, o -1 si va desarmado)
+  showWeapon(r.group, typeof p.w === "number" ? p.w : -1);
 }
 
 function updateZone(z) {
@@ -1235,6 +1348,7 @@ function onDeath(killer) {
   wantShoot = false;
   triggerArmed = false;
   aiming = false;
+  wantAds = false;
   aimVec.x = 0;
   aimVec.y = 0;
   dropping = false;
@@ -1305,15 +1419,17 @@ function shoot() {
   const origin = muzzlePoint();
   const baseDir = aimPoint.clone().sub(origin).normalize();
   const damage = new Map(); // id -> daño total que le llega a ese enemigo
-  const assistAng = w.assist * (isTouch ? 2.5 : 1) * (aiming ? 1.5 : 1);
+  const assistAng = w.assist * (isTouch ? 2.5 : 1) * (aiming ? 1.5 : 1) * (ads ? 1.3 : 1);
+  // con la mira puesta el arma es más precisa
+  const spread = w.spread * (ads ? 0.4 : 1);
 
   for (let p = 0; p < w.pellets; p++) {
     const dir = baseDir.clone();
-    if (w.spread > 0) {
+    if (spread > 0) {
       dir.add(new THREE.Vector3(
-        (Math.random() - 0.5) * w.spread,
-        (Math.random() - 0.5) * w.spread,
-        (Math.random() - 0.5) * w.spread
+        (Math.random() - 0.5) * spread,
+        (Math.random() - 0.5) * spread,
+        (Math.random() - 0.5) * spread
       ));
       dir.normalize();
     }
@@ -1576,7 +1692,7 @@ function animate() {
     else if (stickFwd < 0.6) autoRunStick = false;
 
     const running = keys["ShiftLeft"] || keys["ShiftRight"] || runToggle || autoRunStick;
-    const speed = dropping ? 13 : running ? 10 : 6.5;
+    const speed = (dropping ? 13 : running ? 10 : 6.5) * (ads ? 0.55 : 1); // apuntando andas más lento
     const dir = new THREE.Vector3()
       .addScaledVector(forward, fwd)
       .addScaledVector(right, str);
@@ -1653,7 +1769,7 @@ function animate() {
     netAccum += dt;
     if (netAccum > 0.066) {
       netAccum = 0;
-      send({ t: "state", x: pos.x, y: pos.y, z: pos.z, ry: yaw });
+      send({ t: "state", x: pos.x, y: pos.y, z: pos.z, ry: yaw, w: weaponIndex });
     }
   }
 
@@ -1714,11 +1830,31 @@ function animate() {
     }
   }
 
+  // --- Mira (ADS): se apunta con clic derecho o con el botón 🎯 ---
+  const canAds = playing && alive && !dropping && !settingsOpen && hasWeapon();
+  if (!canAds) wantAds = false;
+  ads = canAds && wantAds;
+
+  // el zoom se mezcla poco a poco (nada de saltos)
+  adsBlend += ((ads ? 1 : 0) - adsBlend) * Math.min(1, dt * 10);
+  const fovAds = weaponIndex === 2 ? 24 : weaponIndex === 1 ? 46 : 36; // el sniper acerca más
+  const wantFov = 72 + (fovAds - 72) * adsBlend;
+  if (Math.abs(camera.fov - wantFov) > 0.03) {
+    camera.fov = wantFov;
+    camera.updateProjectionMatrix();
+  }
+  document.body.classList.toggle("ads", adsBlend > 0.35);
+  document.body.classList.toggle("ads-scope", adsBlend > 0.35 && weaponIndex === 2);
+  $("btnAim")?.classList.toggle("on", wantAds); // el botón del móvil se queda marcado
+
   // Cámara en 3ª persona, al hombro (el personaje no tapa la mira)
   const camDir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(pitch, yaw, 0, "YXZ"));
   const camRight = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
-  const focus = new THREE.Vector3(pos.x, pos.y + 1.55, pos.z).addScaledVector(camRight, 0.8);
-  camera.position.copy(focus).addScaledVector(camDir, dropping ? -9 : -6.2);
+  // Al apuntar, la cámara se acerca al hombro y se aparta para ver por la mira
+  const focus = new THREE.Vector3(pos.x, pos.y + 1.55 + 0.08 * adsBlend, pos.z)
+    .addScaledVector(camRight, 0.8 + 0.30 * adsBlend);
+  const camDist = dropping ? -9 : -6.2 + 3.5 * adsBlend;
+  camera.position.copy(focus).addScaledVector(camDir, camDist);
   if (camera.position.y < 0.7) camera.position.y = 0.7;
   camera.lookAt(focus.x + camDir.x, focus.y + camDir.y, focus.z + camDir.z);
 

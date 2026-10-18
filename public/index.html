@@ -18,6 +18,8 @@
 </head>
 <body>
   <div id="crosshair">+</div>
+  <!-- Visor del francotirador: aparece al mirar por la mira -->
+  <div id="scope"></div>
 
   <div id="hud">
     <div id="topbar">
@@ -44,6 +46,7 @@
     <div id="btns">
       <button id="btnWeapon" class="tbtn sm">🔫</button>
       <button id="btnReload" class="tbtn sm">⟳</button>
+      <button id="btnAim" class="tbtn sm">🎯</button>
       <button id="btnJump" class="tbtn sm">⤒</button>
       <button id="btnRun" class="tbtn sm">»</button>
     </div>
@@ -57,6 +60,7 @@
     <button id="playBtn">Jugar</button>
     <p class="small" id="helpDesktop">
       <b>WASD</b> mover · <b>Ratón</b> mirar · <b>Clic</b> disparar ·
+      <b>Clic derecho</b> mirar por la mira ·
       <b>1 2 3</b> / <b>Rueda</b> cambiar arma · <b>R</b> recargar ·
       <b>F</b> botiquín · <b>G</b> chaleco ·
       <b>Espacio</b> saltar · <b>Shift</b> correr · <b>O</b> ajustes · <b>ESC</b> salir
@@ -64,7 +68,7 @@
     <p class="small hidden" id="helpMobile">
       <b>Joystick izq.</b> moverte (a tope = correr) · <b>Joystick der.</b> apuntar y disparar ·
       <b>🩹 🛡️</b> usar objetos · <b>🔫</b> arma · <b>⟳</b> recargar ·
-      <b>⤒</b> saltar · <b>»</b> correr fijo
+      <b>🎯</b> mirar por la mira · <b>⤒</b> saltar · <b>»</b> correr fijo
     </p>
     <p class="small">Cada partida empiezas <b>saltando en paracaídas desde un helicóptero</b>: guíate hasta el suelo, pasa por encima del loot para recogerlo y comparte <b>http://TU-IP:3000</b> con tus amigos.</p>
   </div>

@@ -218,6 +218,7 @@ function makePlayer(id, name) {
     shields: 0,
     alive: true,
     kills: 0,
+    weapon: -1, // arma que lleva puesta (-1 = desarmado): sirve para que los demás la vean
   };
 }
 
@@ -340,6 +341,7 @@ wss.on("connection", (ws) => {
         if (typeof msg.y === "number") p.y = msg.y;
         if (typeof msg.z === "number") p.z = msg.z;
         if (typeof msg.ry === "number") p.ry = msg.ry;
+        if (typeof msg.w === "number") p.weapon = msg.w; // arma que lleva ahora
         break;
 
       case "hit": {
@@ -512,6 +514,7 @@ function tick() {
       shields: p.shields,
       alive: p.alive,
       kills: p.kills,
+      w: p.weapon,
     });
   }
   broadcast({
