@@ -6,6 +6,9 @@ Corre en el navegador y funciona en red local para jugar con amigos.
 Los personajes son **gatitos** 🐱: cada jugador tiene su propio color, orejas, bigotes
 y una cola que se menea. Tú eres el gatito **naranja**.
 
+Y tienen una manía muy gatuna: **andan erguidos en 2 patas**, pero en cuanto
+**corren** se tumban y salen **a 4 patas** a toda velocidad. 🐾
+
 ## ▶️ Cómo ejecutar el juego (lo más fácil)
 
 En el **Escritorio** tienes un acceso directo: **`Juego Vipe`**.

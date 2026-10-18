@@ -220,8 +220,19 @@ function makeLabel(text) {
   return sprite;
 }
 
-// Cada personaje es un GATO: tronco rechoncho, orejas, ojos, bigotes,
-// cola articulada y patas. Delante es -z y su derecha es +x (igual que el arma).
+// Medidas del gatito (en unidades del mundo)
+const CAT_HIP_Y = 0.62;      // altura de la cadera de pie (2 patas)
+const CAT_RUN_HIP_Y = 0.72;  // altura de la cadera a 4 patas
+const CAT_RUN_PITCH = -1.35; // cuánto se tumba el cuerpo al correr a 4 patas
+const CAT_ARM_LEN = 0.54;    // del hombro a la pata delantera
+const CAT_LEG_LEN = 0.47;    // de la cadera a la pata trasera
+const CAT_ARM_PIVOT = { y: 0.43, z: -0.26 }; // hombro, relativo a la cadera
+const CAT_LEG_PIVOT = { y: -0.16, z: 0.02 }; // cadera, relativo a la cadera
+
+// Cada personaje es un GATO montado en grupos ("huesos") para poder animarlo:
+//   rig  -> tronco + cabeza + patas delanteras + cola + arma (se inclina al correr)
+//   legs -> las 2 patas traseras
+// Delante es -z y su derecha es +x (lo mismo que usa el arma).
 function makeAvatar(color) {
   const g = new THREE.Group();
   const furColor = new THREE.Color(color);
@@ -234,98 +245,129 @@ function makeAvatar(color) {
   const dark = new THREE.MeshStandardMaterial({ color: 0x241f1c, roughness: 0.6 });
   const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
 
+  // Grupo del cuerpo: todo lo que se tumba al ir a 4 patas
+  const rig = new THREE.Group();
+  rig.position.y = CAT_HIP_Y;
+  g.add(rig);
+
   // --- tronco ---
   const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.40, 0.55, 8, 16), fur);
-  body.position.y = 0.72;
+  body.position.y = 0.10;
   body.castShadow = true;
   body.userData.isBody = true;
-  g.add(body);
+  rig.add(body);
 
   // barriga clara
   const belly = new THREE.Mesh(new THREE.SphereGeometry(0.30, 14, 12), lightFur);
-  belly.position.set(0, 0.62, -0.16);
+  belly.position.set(0, 0, -0.16);
   belly.scale.set(1, 1.15, 0.6);
-  g.add(belly);
+  rig.add(belly);
 
-  // --- patas traseras + pies ---
-  for (const s of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.22, 5, 10), fur);
-    leg.position.set(s * 0.19, 0.24, 0);
-    leg.castShadow = true;
-    g.add(leg);
+  // --- cabeza (grupo propio: al correr se endereza sola) ---
+  const head = new THREE.Group();
+  head.position.y = 0.84;
+  rig.add(head);
 
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), lightFur);
-    foot.position.set(s * 0.19, 0.09, -0.05);
-    foot.scale.set(1, 0.65, 1.3);
-    g.add(foot);
-  }
-
-  // --- brazos, hacia delante sujetando el arma ---
-  for (const s of [-1, 1]) {
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.10, 0.26, 5, 10), fur);
-    arm.position.set(s * 0.34, 1.05, -0.26);
-    arm.rotation.x = -1.15;
-    arm.castShadow = true;
-    g.add(arm);
-  }
-
-  // --- cabeza ---
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), fur);
-  head.position.y = 1.46;
-  head.castShadow = true;
-  g.add(head);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), fur);
+  skull.castShadow = true;
+  head.add(skull);
 
   // morro claro + naricita rosa
   const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.20, 14, 12), lightFur);
-  muzzle.position.set(0, 1.36, -0.32);
+  muzzle.position.set(0, -0.10, -0.32);
   muzzle.scale.set(1, 0.8, 0.75);
-  g.add(muzzle);
+  head.add(muzzle);
 
   const catNose = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), pink);
-  catNose.position.set(0, 1.42, -0.47);
-  g.add(catNose);
+  catNose.position.set(0, -0.04, -0.47);
+  head.add(catNose);
 
   // ojos con pupila
   for (const s of [-1, 1]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 10), eyeWhite);
-    eye.position.set(s * 0.17, 1.55, -0.33);
-    g.add(eye);
+    eye.position.set(s * 0.17, 0.09, -0.33);
+    head.add(eye);
 
     const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), dark);
-    pupil.position.set(s * 0.175, 1.545, -0.41);
-    g.add(pupil);
+    pupil.position.set(s * 0.175, 0.085, -0.41);
+    head.add(pupil);
   }
 
   // orejas (conos) con interior rosa
   for (const s of [-1, 1]) {
     const ear = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.34, 4), fur);
-    ear.position.set(s * 0.23, 1.82, 0);
+    ear.position.set(s * 0.23, 0.36, 0);
     ear.rotation.y = Math.PI / 4;
     ear.rotation.z = s * -0.20;
     ear.castShadow = true;
-    g.add(ear);
+    head.add(ear);
 
     const inner = new THREE.Mesh(new THREE.ConeGeometry(0.095, 0.20, 4), pink);
-    inner.position.set(s * 0.235, 1.80, -0.06);
+    inner.position.set(s * 0.235, 0.34, -0.06);
     inner.rotation.y = Math.PI / 4;
     inner.rotation.z = s * -0.20;
-    g.add(inner);
+    head.add(inner);
   }
 
   // bigotes
   for (const s of [-1, 1]) {
     for (const [dy, rz] of [[0.045, 0.10], [0, 0], [-0.045, -0.10]]) {
       const w = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.012), lightFur);
-      w.position.set(s * 0.30, 1.38 + dy, -0.34);
+      w.position.set(s * 0.30, -0.08 + dy, -0.34);
       w.rotation.z = s * rz;
-      g.add(w);
+      head.add(w);
     }
   }
+
+  // --- patas TRASERAS (grupo propio para poder moverlas) ---
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(s * 0.19, CAT_LEG_PIVOT.y, CAT_LEG_PIVOT.z);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.22, 5, 10), fur);
+    thigh.position.y = -0.22;
+    thigh.castShadow = true;
+    leg.add(thigh);
+
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), lightFur);
+    foot.position.set(0, -0.37, -0.05);
+    foot.scale.set(1, 0.65, 1.3);
+    leg.add(foot);
+
+    rig.add(leg);
+    legs.push(leg);
+  }
+
+  // --- patas DELANTERAS: de pie sujetan el arma, al correr van al suelo ---
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const arm = new THREE.Group();
+    arm.position.set(s * 0.34, CAT_ARM_PIVOT.y, CAT_ARM_PIVOT.z);
+    arm.rotation.x = -1.35;
+    const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.26, 5, 10), fur);
+    limb.position.y = -0.21;
+    limb.castShadow = true;
+    arm.add(limb);
+
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), lightFur);
+    paw.position.set(0, -0.44, -0.02);
+    paw.scale.set(1, 0.8, 1.2);
+    arm.add(paw);
+
+    rig.add(arm);
+    arms.push(arm);
+  }
+
+  // --- arma, delante y a la derecha ---
+  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.8), dark);
+  gun.position.set(0.28, 0.36, -0.50);
+  gun.castShadow = true;
+  rig.add(gun);
 
   // --- cola articulada (se menea desde el bucle de dibujo) ---
   // El primer tramo la abre hacia un lado: así se ve bien desde detrás.
   const tail = new THREE.Group();
-  tail.position.set(0, 0.78, 0.30);
+  tail.position.set(0, 0.16, 0.30);
   let parent = tail;
   for (let i = 0; i < 6; i++) {
     const seg = new THREE.Group();
@@ -342,17 +384,85 @@ function makeAvatar(color) {
     parent.add(seg);
     parent = seg;
   }
-  g.add(tail);
-
-  // --- arma en la mano derecha (apunta hacia delante) ---
-  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.8), dark);
-  gun.position.set(0.30, 1.14, -0.36);
-  gun.castShadow = true;
-  g.add(gun);
+  rig.add(tail);
 
   g.userData.body = body;
   g.userData.tail = tail;
+  g.userData.rig = rig;
+  g.userData.head = head;
+  g.userData.arms = arms;
+  g.userData.legs = legs;
+  g.userData.gun = gun;
+  g.userData.cat = { quad: 0, phase: 0 }; // estado de la animacion
   return g;
+}
+
+// ------------------- Animación del gato -------------------
+// Con "speed" (u/s) decide la postura:
+//   parado / andando  -> de pie, en 2 patas, con pasitos alternos
+//   corriendo         -> se tumba y corre a 4 patas (galope)
+// El cambio entre posturas se mezcla poco a poco (no da un salto).
+function animateCat(g, speed, dt) {
+  const u = g.userData;
+  if (!u || !u.rig || !u.cat) return;
+  const st = u.cat;
+
+  // ¿a 4 patas? solo cuando de verdad corre
+  const wantQuad = speed > 7.7 ? 1 : 0;
+  st.quad += (wantQuad - st.quad) * Math.min(1, dt * 7);
+  const q = st.quad;
+
+  // el ciclo de las patas corre más rápido cuanto más rápido vas
+  st.phase += dt * (speed > 0.4 ? Math.min(speed, 14) * 1.5 : 1.8);
+  const p = st.phase;
+
+  const walk = Math.min(1, speed / 6.5);                        // 0 parado · 1 andando
+  const run = Math.min(1, Math.max(0, (speed - 6.5) / 3.6));     // 0 andando · 1 corriendo
+  const th = CAT_RUN_PITCH * q;
+  const cosT = Math.cos(th), sinT = Math.sin(th);
+
+  // tronco: se tumba y baja al correr, con un rebote al dar las zancadas
+  const hipY = CAT_HIP_Y + (CAT_RUN_HIP_Y - CAT_HIP_Y) * q
+    + Math.sin(p * 2) * (0.012 * walk + 0.030 * run);
+  u.rig.position.y = hipY;
+  u.rig.rotation.x = th;
+
+  // a 4 patas el cuerpo se afina un poco: así se ven mejor las patas
+  const slim = 1 - 0.18 * q;
+  u.body.scale.set(slim, 1, slim);
+
+  // la cabeza se endereza sola para seguir mirando al frente
+  u.head.rotation.x = -th * 0.85;
+
+  for (let i = 0; i < 2; i++) {
+    const sgn = i === 0 ? -1 : 1;
+
+    // --- patas delanteras ---
+    const arm = u.arms[i];
+    const armPivotY = hipY + CAT_ARM_PIVOT.y * cosT - CAT_ARM_PIVOT.z * sinT;
+    const armWalk = Math.sin(p) * 0.18 * walk * (1 - run) * sgn; // pasitos alternos
+    const armRunSw = Math.sin(p) * 0.60 * run;                   // las 2 a la vez
+    // de pie (-1.35: sujeta el arma) -> a 4 patas (recta hasta el suelo)
+    arm.rotation.x = -1.35 * (1 - q) + (-th) * q + armWalk + armRunSw;
+    const armS = 1 + (armPivotY / CAT_ARM_LEN - 1) * q;
+    arm.scale.set(1 + 0.22 * q, armS, 1 + 0.22 * q);
+
+    // --- patas traseras ---
+    const leg = u.legs[i];
+    const legPivotY = hipY + CAT_LEG_PIVOT.y * cosT - CAT_LEG_PIVOT.z * sinT;
+    const legWalk = Math.sin(p + (i === 0 ? 0 : Math.PI)) * 0.50 * walk * (1 - run);
+    const legRunSw = Math.sin(p + Math.PI) * 0.60 * run;
+    leg.rotation.x = (-th) * q + legWalk + legRunSw;
+    const legS = 1 + (legPivotY / CAT_LEG_LEN - 1) * q;
+    leg.scale.set(1 + 0.22 * q, legS, 1 + 0.22 * q);
+  }
+
+  // el arma se mantiene horizontal y se recoge contra el cuerpo al correr
+  u.gun.rotation.x = -th;
+  u.gun.position.set(0.28 + 0.10 * q, 0.36 + 0.26 * q, -0.50 + 0.40 * q);
+
+  // la cola se levanta un poco al ir a 4 patas
+  u.tail.rotation.x = -0.12 * q;
 }
 
 const myAvatar = makeAvatar(0xf2913d); // tú: gatito naranja
@@ -1568,6 +1678,12 @@ function animate() {
   myAvatar.rotation.y = yaw;
   myAvatar.visible = alive;
 
+  // Animación del gato: anda en 2 patas y corre a 4 patas
+  const mySpeed = (playing && alive && !settingsOpen && !dropping)
+    ? Math.hypot(vel.x, vel.z)
+    : 0;
+  animateCat(myAvatar, mySpeed, dt);
+
   // Aviso de paracaídas con la altura restante
   if (dropping) {
     const dh = $("dropHint");
@@ -1576,9 +1692,15 @@ function animate() {
   crosshairEl.style.display = dropping ? "none" : "";
 
   for (const r of remotePlayers.values()) {
+    const px = r.group.position.x, pz = r.group.position.z;
     r.group.position.lerp(new THREE.Vector3(r.target.x, r.target.y, r.target.z), 0.22);
     r.group.rotation.y = r.target.ry;
     if (r.chute) r.chute.visible = r.target.y > 3;
+
+    // velocidad real del jugador (la posición va suavizada, así no tiembla)
+    const sp = Math.min(20,
+      Math.hypot(r.group.position.x - px, r.group.position.z - pz) / Math.max(dt, 0.001));
+    animateCat(r.group, r.target.y > 3 ? 0 : sp, dt);
   }
 
   wagTails(performance.now() * 0.004);
