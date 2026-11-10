@@ -204,21 +204,6 @@ function removeLootMesh(id) {
 }
 
 // ------------------------- Jugadores -------------------------
-function makeLabel(text) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256; canvas.height = 64;
-  const ctx = canvas.getContext("2d");
-  ctx.font = "bold 34px Segoe UI, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(0,0,0,.55)";
-  ctx.fillRect(0, 0, 256, 64);
-  ctx.fillStyle = "#fff";
-  ctx.fillText(text, 128, 44);
-  const tex = new THREE.CanvasTexture(canvas);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  sprite.scale.set(3, 0.75, 1);
-  return sprite;
-}
 
 // ------------------------- Armas (modelos con mira) -------------------------
 // Cada arma es un grupo de cajas/cilindros. Delante es -z (lo mismo que el gato).
@@ -714,17 +699,12 @@ function animateCat(g, speed, dt) {
 }
 
 let myAvatar = null;
-let myLabel = null;
 let myChute = null;
 
 // (Re)construye tu personaje con el animal elegido en el menú.
 function rebuildMyAvatar() {
   if (myAvatar) scene.remove(myAvatar);
   myAvatar = makeAvatar(null, myAnimal);
-  myLabel = makeLabel("Tú");
-  myLabel.position.y = 2.3;
-  myLabel.visible = !joined;
-  myAvatar.add(myLabel);
   myChute = makeParachute();
   myChute.visible = false;
   myAvatar.add(myChute);
@@ -1395,7 +1375,6 @@ function onMessage(msg) {
   switch (msg.t) {
     case "welcome":
       myId = msg.id;
-      myLabel.visible = false;
       for (const it of msg.loot || []) addLootMesh(it);
       updateRound(msg.round);
       break;
@@ -1503,14 +1482,11 @@ function upsertRemote(p) {
     const color = new THREE.Color().setHSL((parseInt(p.id) * 0.137) % 1, 0.65, 0.55);
     const group = makeAvatar(color.getHex(), p.a);
     scene.add(group);
-    const label = makeLabel(p.name);
-    label.position.y = 2.3;
-    group.add(label);
     const chute = makeParachute();
     chute.visible = false;
     group.add(chute);
     group.userData.id = p.id;
-    r = { group, label, chute, name: p.name, target: { x: p.x, y: p.y, z: p.z, ry: p.ry }, hp: p.hp };
+    r = { group, chute, name: p.name, target: { x: p.x, y: p.y, z: p.z, ry: p.ry }, hp: p.hp };
     remotePlayers.set(p.id, r);
   }
   r.target = { x: p.x, y: p.y, z: p.z, ry: p.ry };
