@@ -170,7 +170,7 @@ function generateLoot() {
     loot.set(id, {
       id,
       kind,
-      weapon: kind === "weapon" ? weaponSlot++ % 3 : null,
+      weapon: kind === "weapon" ? weaponSlot++ % 4 : null,
       x: +spot.x.toFixed(2),
       z: +spot.z.toFixed(2),
     });

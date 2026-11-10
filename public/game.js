@@ -215,8 +215,12 @@ const GUN_MAT = {
   brass: new THREE.MeshStandardMaterial({ color: 0xd9b44a, roughness: 0.35, metalness: 0.8 }),
   lens: new THREE.MeshStandardMaterial({ color: 0x8fd0ff, emissive: 0x14405c, emissiveIntensity: 0.8, roughness: 0.12, metalness: 0.5 }),
   dot: new THREE.MeshStandardMaterial({ color: 0xff4b3a, emissive: 0xff2a15, emissiveIntensity: 1.4 }),
+  sandal: new THREE.MeshStandardMaterial({ color: 0x2a7de1, roughness: 0.75 }),
+  sandalBed: new THREE.MeshStandardMaterial({ color: 0x9fd0ff, roughness: 0.8 }),
+  sandalStrap: new THREE.MeshStandardMaterial({ color: 0xffd23c, roughness: 0.7 }),
 };
 const GUN_GEO = {};
+const SANDAL_STRAP_GEO = new THREE.BoxGeometry(0.05, 0.035, 0.28);
 function gbox(w, h, d, x, y, z, mat) {
   const k = "b" + w + "," + h + "," + d;
   const geo = GUN_GEO[k] || (GUN_GEO[k] = new THREE.BoxGeometry(w, h, d));
@@ -236,7 +240,7 @@ function gcyl(r, len, x, y, z, mat) {
 }
 
 // kind: 0 rifle (mira de punto rojo) · 1 escopeta (solo punto de mira) ·
-//       2 francotirador (mira telescópica)
+//       2 francotirador (mira telescópica) · 3 chancla voladora
 function makeGun(kind) {
   const g = new THREE.Group();
 
@@ -265,7 +269,7 @@ function makeGun(kind) {
     const bead = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), GUN_MAT.brass);
     bead.position.set(0, 0.11, -0.72);
     g.add(bead);
-  } else {
+  } else if (kind === 2) {
     // ---------------- FRANCOTIRADOR ----------------
     g.add(gbox(0.12, 0.14, 0.60, 0, 0.02, -0.12, GUN_MAT.dark));    // cuerpo
     g.add(gcyl(0.035, 0.58, 0, 0.03, -0.66));                       // cañón largo
@@ -282,6 +286,22 @@ function makeGun(kind) {
     const lensB = gcyl(0.07, 0.02, 0, 0.20, 0.03, GUN_MAT.lens);    // cristal trasero
     g.add(lensF);
     g.add(lensB);
+  } else {
+    // ---------------- CHANCLA VOLADORA ----------------
+    // Suela + plantilla + tiras en forma de Y (la clásica chancla de playa).
+    g.add(gbox(0.24, 0.045, 0.58, 0, 0, -0.12, GUN_MAT.sandal));       // suela
+    g.add(gbox(0.20, 0.020, 0.52, 0, 0.032, -0.12, GUN_MAT.sandalBed)); // plantilla
+    const strapL = new THREE.Mesh(SANDAL_STRAP_GEO, GUN_MAT.sandalStrap);
+    strapL.position.set(-0.075, 0.075, -0.10);
+    strapL.rotation.y = 0.55;
+    strapL.castShadow = true;
+    g.add(strapL);
+    const strapR = new THREE.Mesh(SANDAL_STRAP_GEO, GUN_MAT.sandalStrap);
+    strapR.position.set(0.075, 0.075, -0.10);
+    strapR.rotation.y = -0.55;
+    strapR.castShadow = true;
+    g.add(strapR);
+    g.add(gbox(0.05, 0.035, 0.18, 0, 0.075, -0.29, GUN_MAT.sandalStrap)); // tira central
   }
 
   return g;
@@ -572,7 +592,7 @@ function makeAvatar(color, animalKey) {
   const gunMount = new THREE.Group();
   gunMount.position.set(0.28, 0.36, -0.50);
   rig.add(gunMount);
-  const guns = [makeGun(0), makeGun(1), makeGun(2)];
+  const guns = [makeGun(0), makeGun(1), makeGun(2), makeGun(3)];
   for (const gu of guns) { gu.visible = false; gunMount.add(gu); }
 
   // --- cola articulada (se menea desde el bucle de dibujo) ---
@@ -823,6 +843,7 @@ const WEAPONS = [
   { name: "Rifle",         dmg: 34, cd: 0.13, auto: true,  pellets: 1, spread: 0.010, range: 160, mag: 30, reload: 1.8, color: 0xffe066, assist: 0.022 },
   { name: "Escopeta",      dmg: 13, cd: 0.80, auto: false, pellets: 8, spread: 0.085, range: 45,  mag: 6,  reload: 2.4, color: 0xffa64d, assist: 0.070 },
   { name: "Francotirador", dmg: 85, cd: 1.30, auto: false, pellets: 1, spread: 0.001, range: 320, mag: 5,  reload: 2.9, color: 0x66e0ff, assist: 0.012 },
+  { name: "Chancla voladora", dmg: 70, cd: 0.90, auto: false, pellets: 1, spread: 0.030, range: 55, mag: 1, reload: 0.7, color: 0xff77b2, assist: 0.060, throw: true },
 ];
 let weaponIndex = -1; // -1 = vas desarmado
 const owned = WEAPONS.map(() => false); // armas que llevas encima
@@ -919,6 +940,7 @@ addEventListener("keydown", (e) => {
   if (e.code === "Digit1") selectWeapon(0);
   if (e.code === "Digit2") selectWeapon(1);
   if (e.code === "Digit3") selectWeapon(2);
+  if (e.code === "Digit4") selectWeapon(3);
   if (e.code === "KeyR") startReload();
   if (e.code === "KeyO") openSettings(!settingsOpen);
   if (e.code === "KeyF") useItem("medkit");
@@ -1567,6 +1589,23 @@ function addTracer(a, b, color) {
   tracers.push({ line, t: 0 });
 }
 
+// Chancla lanzada: vuela girando desde el arma hasta el punto de impacto
+const chanclaFlyers = [];
+function throwChancla(from, to) {
+  const g = makeGun(3);
+  g.scale.setScalar(1.7);
+  g.position.copy(from);
+  scene.add(g);
+  const dist = from.distanceTo(to);
+  chanclaFlyers.push({
+    g,
+    from: from.clone(),
+    to: to.clone(),
+    t: 0,
+    dur: Math.max(0.12, Math.min(0.55, dist / 60)),
+  });
+}
+
 function shoot() {
   if (!hasWeapon()) return;
   const w = WEAPONS[weaponIndex];
@@ -1627,13 +1666,15 @@ function shoot() {
       if (best) target = best;
     }
 
+    const endPoint = target
+      ? target.point
+      : (wallB ? wallB.point.clone() : origin.clone().addScaledVector(dir, w.range));
     if (target) {
       damage.set(target.id, (damage.get(target.id) || 0) + w.dmg);
-      addTracer(origin, target.point, w.color);
-    } else {
-      const end = wallB ? wallB.point.clone() : origin.clone().addScaledVector(dir, w.range);
-      addTracer(origin, end, w.color);
     }
+    // La chancla se ve volar; las demás armas dejan un trazador
+    if (w.throw) throwChancla(origin, endPoint);
+    else addTracer(origin, endPoint, w.color);
   }
 
   // 4) Un solo mensaje de daño por enemigo
@@ -1999,6 +2040,21 @@ function animate() {
     }
   }
 
+  // --- Chanclas volando (giran y siguen un pequeño arco) ---
+  for (let i = chanclaFlyers.length - 1; i >= 0; i--) {
+    const f = chanclaFlyers[i];
+    f.t += dt;
+    const k = Math.min(1, f.t / f.dur);
+    f.g.position.lerpVectors(f.from, f.to, k);
+    f.g.position.y += Math.sin(k * Math.PI) * 0.8;
+    f.g.rotation.x += dt * 22;
+    f.g.rotation.z += dt * 17;
+    if (k >= 1) {
+      scene.remove(f.g);
+      chanclaFlyers.splice(i, 1);
+    }
+  }
+
   // --- Mira (ADS): se apunta con clic derecho o con el botón 🎯 ---
   const canAds = playing && alive && !dropping && !settingsOpen && hasWeapon();
   if (!canAds) wantAds = false;
@@ -2006,7 +2062,7 @@ function animate() {
 
   // el zoom se mezcla poco a poco (nada de saltos)
   adsBlend += ((ads ? 1 : 0) - adsBlend) * Math.min(1, dt * 10);
-  const fovAds = weaponIndex === 2 ? 24 : weaponIndex === 1 ? 46 : 36; // el sniper acerca más
+  const fovAds = weaponIndex === 2 ? 24 : weaponIndex === 1 ? 46 : weaponIndex === 3 ? 44 : 36; // el sniper acerca más
   const wantFov = 72 + (fovAds - 72) * adsBlend;
   if (Math.abs(camera.fov - wantFov) > 0.03) {
     camera.fov = wantFov;

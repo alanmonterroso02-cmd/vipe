@@ -181,8 +181,8 @@ por encima** (verás el objeto girando y flotando).
 
 ## Armas
 
-Hay **3 armas** repartidas por el mapa en cajas 🔫. Cuando recoges una
-**la guardas** y puedes cambiar entre las que tengas con **1 / 2 / 3**, la
+Hay **4 armas** repartidas por el mapa en cajas 🔫. Cuando recoges una
+**la guardas** y puedes cambiar entre las que tengas con **1 / 2 / 3 / 4**, la
 **rueda del ratón** o el botón **🔫** en el móvil. Se recargan con **R** o el
 botón **⟳**.
 
@@ -194,6 +194,7 @@ botón **⟳**.
 | 🔫 **Rifle** | 34 | Rápida (automático) | 30 | Medio-largo | Todo terreno, mantén pulsado |
 | 💥 **Escopeta** | 13 × 8 perdigones | Lenta | 6 | Corto | Devastadora de cerca |
 | 🎯 **Francotirador** | 85 | Muy lenta | 5 | Muy largo | Casi mata de un tiro |
+| 🩴 **Chancla voladora** | 70 | Media | 1 | Corto-medio | Se lanza girando y vuelve sola (recarga 0,7 s) |
 
 La munición es **infinita** (solo cuentas las balas del cargador); al vaciarlo
 se recarga automáticamente. Al empezar una **partida nueva vuelves a estar
