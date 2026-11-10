@@ -302,7 +302,32 @@ function makeGun(kind) {
   return g;
 }
 
-// Medidas del gatito (en unidades del mundo)
+// ------------------------- Animales -------------------------
+// Todos usan el mismo "esqueleto" (de pie en 2 patas / a 4 patas al correr),
+// pero cambian orejas, morro, cola, color y algunos detalles.
+// La clave (gato, perro...) viaja en el mensaje "join" y el servidor la
+// reenvía en "state" para que los demás vean tu animal.
+const ANIMALS = {
+  gato:   { name: "Gato",   emoji: "🐱", color: 0xf2913d, ears: "pointy", tail: "long",  muzzle: "cat",   whiskers: true },
+  perro:  { name: "Perro",  emoji: "🐶", color: 0xc08a5a, ears: "floppy", tail: "short", muzzle: "snout", tongue: true },
+  conejo: { name: "Conejo", emoji: "🐰", color: 0xe9e3da, ears: "long",   tail: "puff",  muzzle: "small", teeth: true },
+  zorro:  { name: "Zorro",  emoji: "🦊", color: 0xe8732a, ears: "fox",    tail: "bushy", muzzle: "snout", whiskers: true },
+  panda:  { name: "Panda",  emoji: "🐼", color: 0xf2f2f2, ears: "round",  tail: "stub",  muzzle: "round", patches: true, darkLimbs: true },
+  oso:    { name: "Oso",    emoji: "🐻", color: 0x8a5a2b, ears: "round",  tail: "stub",  muzzle: "wide",  big: true },
+  cerdo:  { name: "Cerdo",  emoji: "🐷", color: 0xf6a9b8, ears: "floppy", tail: "curl",  muzzle: "pig",   snout: true },
+  rana:   { name: "Rana",   emoji: "🐸", color: 0x74c365, ears: "none",   tail: "none",  muzzle: "frog",  eyesTop: true },
+};
+const ANIMAL_KEYS = Object.keys(ANIMALS);
+function getAnimal(key) { return ANIMALS[key] || ANIMALS.gato; }
+
+// Animal elegido en el menú (se recuerda en el navegador)
+let myAnimal = "gato";
+try {
+  const savedAnimal = localStorage.getItem("jv_animal");
+  if (ANIMALS[savedAnimal]) myAnimal = savedAnimal;
+} catch { /* sin animal guardado */ }
+
+// Medidas del personaje (en unidades del mundo)
 const CAT_HIP_Y = 0.62;      // altura de la cadera de pie (2 patas)
 const CAT_RUN_HIP_Y = 0.72;  // altura de la cadera a 4 patas
 const CAT_RUN_PITCH = -1.35; // cuánto se tumba el cuerpo al correr a 4 patas
@@ -311,21 +336,29 @@ const CAT_LEG_LEN = 0.47;    // de la cadera a la pata trasera
 const CAT_ARM_PIVOT = { y: 0.43, z: -0.26 }; // hombro, relativo a la cadera
 const CAT_LEG_PIVOT = { y: -0.16, z: 0.02 }; // cadera, relativo a la cadera
 
-// Cada personaje es un GATO montado en grupos ("huesos") para poder animarlo:
+// Cada personaje es un animal montado en grupos ("huesos") para animarlo:
 //   rig  -> tronco + cabeza + patas delanteras + cola + arma (se inclina al correr)
 //   legs -> las 2 patas traseras
 // Delante es -z y su derecha es +x (lo mismo que usa el arma).
-function makeAvatar(color) {
+// color: tinte de piel (para diferenciar jugadores). Si es null se usa el del animal.
+function makeAvatar(color, animalKey) {
+  const species = getAnimal(animalKey);
   const g = new THREE.Group();
-  const furColor = new THREE.Color(color);
+  // El color del animal manda; el tinte por jugador (color) solo lo diferencia un poco.
+  const furColor = new THREE.Color(species.color);
+  if (typeof color === "number") furColor.lerp(new THREE.Color(color), 0.18);
   const fur = new THREE.MeshStandardMaterial({ color: furColor, roughness: 0.85 });
   const lightFur = new THREE.MeshStandardMaterial({
     color: furColor.clone().lerp(new THREE.Color(0xffffff), 0.55),
     roughness: 0.85,
   });
   const pink = new THREE.MeshStandardMaterial({ color: 0xff9db3, roughness: 0.8 });
+  const pinkDark = new THREE.MeshStandardMaterial({ color: 0xe07a95, roughness: 0.8 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x241f1c, roughness: 0.6 });
   const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+  const limbMat = species.darkLimbs ? dark : fur;    // patas (el panda las tiene negras)
+  const footMat = species.darkLimbs ? dark : lightFur; // pies/manos
+  const bodySize = species.big ? 1.12 : 1;
 
   // Grupo del cuerpo: todo lo que se tumba al ir a 4 patas
   const rig = new THREE.Group();
@@ -348,56 +381,166 @@ function makeAvatar(color) {
   // --- cabeza (grupo propio: al correr se endereza sola) ---
   const head = new THREE.Group();
   head.position.y = 0.84;
+  if (species.big) head.scale.setScalar(1.10);
   rig.add(head);
 
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 16), fur);
   skull.castShadow = true;
   head.add(skull);
 
-  // morro claro + naricita rosa
-  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.20, 14, 12), lightFur);
-  muzzle.position.set(0, -0.10, -0.32);
-  muzzle.scale.set(1, 0.8, 0.75);
-  head.add(muzzle);
-
-  const catNose = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), pink);
-  catNose.position.set(0, -0.04, -0.47);
-  head.add(catNose);
-
-  // ojos con pupila
-  for (const s of [-1, 1]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 10), eyeWhite);
-    eye.position.set(s * 0.17, 0.09, -0.33);
-    head.add(eye);
-
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), dark);
-    pupil.position.set(s * 0.175, 0.085, -0.41);
-    head.add(pupil);
+  // --- morro (según el animal) ---
+  if (species.muzzle === "pig") {
+    // hocico de cerdo: cilindro plano con dos fosas
+    const snoutMat = pinkDark;
+    const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 0.14, 16), snoutMat);
+    snout.position.set(0, -0.08, -0.40);
+    snout.rotation.x = Math.PI / 2;
+    head.add(snout);
+    for (const s of [-1, 1]) {
+      const hole = new THREE.Mesh(new THREE.SphereGeometry(0.030, 8, 6), dark);
+      hole.position.set(s * 0.060, -0.06, -0.475);
+      head.add(hole);
+    }
+  } else {
+    const m = { cat: [0.20, 1, 0.80, 0.75, -0.32], wide: [0.25, 1.15, 0.90, 1.00, -0.30], snout: [0.21, 0.90, 0.80, 1.25, -0.35], small: [0.14, 1, 0.85, 0.80, -0.36], round: [0.18, 1, 1, 1, -0.34], frog: [0.26, 1.15, 0.55, 0.90, -0.24] }[species.muzzle] || [0.20, 1, 0.8, 0.75, -0.32];
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(m[0], 14, 12), lightFur);
+    muzzle.position.set(0, -0.10, m[4]);
+    muzzle.scale.set(m[1], m[2], m[3]);
+    head.add(muzzle);
   }
 
-  // orejas (conos) con interior rosa
-  for (const s of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.34, 4), fur);
-    ear.position.set(s * 0.23, 0.36, 0);
-    ear.rotation.y = Math.PI / 4;
-    ear.rotation.z = s * -0.20;
-    ear.castShadow = true;
-    head.add(ear);
-
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.095, 0.20, 4), pink);
-    inner.position.set(s * 0.235, 0.34, -0.06);
-    inner.rotation.y = Math.PI / 4;
-    inner.rotation.z = s * -0.20;
-    head.add(inner);
+  // nariz (no para la rana, que tiene boca) y detalles de la boca
+  if (species.muzzle !== "frog") {
+    if (species.muzzle === "cat" || species.muzzle === "small") {
+      const n = new THREE.Mesh(new THREE.SphereGeometry(species.muzzle === "small" ? 0.045 : 0.055, 10, 8), pink);
+      n.position.set(0, -0.04, -0.47);
+      head.add(n);
+    } else {
+      const n = new THREE.Mesh(new THREE.SphereGeometry(0.070, 10, 8), dark);
+      n.position.set(0, -0.02, -0.50);
+      head.add(n);
+    }
+  } else {
+    // boca ancha de rana
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.030, 0.10), dark);
+    mouth.position.set(0, -0.20, -0.34);
+    head.add(mouth);
   }
 
-  // bigotes
-  for (const s of [-1, 1]) {
-    for (const [dy, rz] of [[0.045, 0.10], [0, 0], [-0.045, -0.10]]) {
-      const w = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.012), lightFur);
-      w.position.set(s * 0.30, -0.08 + dy, -0.34);
-      w.rotation.z = s * rz;
-      head.add(w);
+  if (species.teeth) {
+    const teeth = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.035), eyeWhite);
+    teeth.position.set(0, -0.20, -0.40);
+    head.add(teeth);
+  }
+  if (species.tongue) {
+    const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.025, 0.20), pink);
+    tongue.position.set(0, -0.21, -0.40);
+    tongue.rotation.x = 0.35;
+    head.add(tongue);
+  }
+
+  // --- ojos ---
+  if (species.eyesTop) {
+    // ojos saltones de rana, en lo alto de la cabeza
+    for (const s of [-1, 1]) {
+      const bulge = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 12), fur);
+      bulge.position.set(s * 0.22, 0.32, -0.10);
+      head.add(bulge);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), eyeWhite);
+      eye.position.set(s * 0.22, 0.35, -0.16);
+      head.add(eye);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.060, 10, 8), dark);
+      pupil.position.set(s * 0.22, 0.36, -0.25);
+      head.add(pupil);
+    }
+  } else {
+    if (species.patches) {
+      // manchas negras del panda alrededor de los ojos
+      for (const s of [-1, 1]) {
+        const patch = new THREE.Mesh(new THREE.SphereGeometry(0.135, 12, 10), dark);
+        patch.position.set(s * 0.17, 0.09, -0.31);
+        patch.scale.set(1.05, 1.25, 0.55);
+        head.add(patch);
+      }
+    }
+    for (const s of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 10), eyeWhite);
+      eye.position.set(s * 0.17, 0.09, -0.33);
+      head.add(eye);
+
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8), dark);
+      pupil.position.set(s * 0.175, 0.085, -0.41);
+      head.add(pupil);
+    }
+  }
+
+  // --- orejas ---
+  const earMat = species.darkLimbs ? dark : fur;
+  if (species.ears === "pointy" || species.ears === "fox") {
+    const big = species.ears === "fox";
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(big ? 0.20 : 0.17, big ? 0.48 : 0.34, 4), fur);
+      ear.position.set(s * (big ? 0.24 : 0.23), big ? 0.40 : 0.36, 0);
+      ear.rotation.y = Math.PI / 4;
+      ear.rotation.z = s * (big ? -0.30 : -0.20);
+      ear.castShadow = true;
+      head.add(ear);
+
+      const inner = new THREE.Mesh(new THREE.ConeGeometry(big ? 0.110 : 0.095, big ? 0.29 : 0.20, 4), pink);
+      inner.position.set(s * (big ? 0.245 : 0.235), big ? 0.38 : 0.34, -0.06);
+      inner.rotation.y = Math.PI / 4;
+      inner.rotation.z = s * (big ? -0.30 : -0.20);
+      head.add(inner);
+    }
+  } else if (species.ears === "long") {
+    // orejas largas de conejo
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.40, 6, 12), fur);
+      ear.position.set(s * 0.16, 0.55, 0.02);
+      ear.rotation.x = -0.10;
+      ear.rotation.z = s * 0.16;
+      ear.castShadow = true;
+      head.add(ear);
+
+      const inner = new THREE.Mesh(new THREE.CapsuleGeometry(0.050, 0.34, 6, 10), pink);
+      inner.position.set(s * 0.16, 0.56, -0.05);
+      inner.rotation.x = -0.10;
+      inner.rotation.z = s * 0.16;
+      head.add(inner);
+    }
+  } else if (species.ears === "round") {
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), earMat);
+      ear.position.set(s * 0.28, 0.32, 0);
+      ear.castShadow = true;
+      head.add(ear);
+      if (!species.darkLimbs) {
+        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), pink);
+        inner.position.set(s * 0.28, 0.32, -0.08);
+        head.add(inner);
+      }
+    }
+  } else if (species.ears === "floppy") {
+    // orejas caídas de perro / cerdo
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.26, 6, 12), fur);
+      ear.position.set(s * 0.34, 0.16, 0.01);
+      ear.rotation.z = s * 0.30;
+      ear.scale.set(1, 1.1, 0.55);
+      ear.castShadow = true;
+      head.add(ear);
+    }
+  }
+
+  // bigotes (gatos y zorros)
+  if (species.whiskers) {
+    for (const s of [-1, 1]) {
+      for (const [dy, rz] of [[0.045, 0.10], [0, 0], [-0.045, -0.10]]) {
+        const w = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.012), lightFur);
+        w.position.set(s * 0.30, -0.08 + dy, -0.34);
+        w.rotation.z = s * rz;
+        head.add(w);
+      }
     }
   }
 
@@ -406,12 +549,12 @@ function makeAvatar(color) {
   for (const s of [-1, 1]) {
     const leg = new THREE.Group();
     leg.position.set(s * 0.19, CAT_LEG_PIVOT.y, CAT_LEG_PIVOT.z);
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.22, 5, 10), fur);
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.22, 5, 10), limbMat);
     thigh.position.y = -0.22;
     thigh.castShadow = true;
     leg.add(thigh);
 
-    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), lightFur);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), footMat);
     foot.position.set(0, -0.37, -0.05);
     foot.scale.set(1, 0.65, 1.3);
     leg.add(foot);
@@ -426,12 +569,12 @@ function makeAvatar(color) {
     const arm = new THREE.Group();
     arm.position.set(s * 0.34, CAT_ARM_PIVOT.y, CAT_ARM_PIVOT.z);
     arm.rotation.x = -1.35;
-    const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.26, 5, 10), fur);
+    const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.26, 5, 10), limbMat);
     limb.position.y = -0.21;
     limb.castShadow = true;
     arm.add(limb);
 
-    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), lightFur);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), footMat);
     paw.position.set(0, -0.44, -0.02);
     paw.scale.set(1, 0.8, 1.2);
     arm.add(paw);
@@ -451,25 +594,44 @@ function makeAvatar(color) {
   // El primer tramo la abre hacia un lado: así se ve bien desde detrás.
   const tail = new THREE.Group();
   tail.position.set(0, -0.08, 0.28);
-  let parent = tail;
-  for (let i = 0; i < 6; i++) {
-    const seg = new THREE.Group();
-    seg.position.y = i === 0 ? 0 : 0.18;
-    seg.rotation.x = 0.20;                   // cada tramo curva hacia atrás
-    seg.rotation.z = i === 0 ? 0.60 : -0.04; // el primero la abre al lado
-    const m = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.075, 0.06, 0.18, 8),
-      i > 4 ? lightFur : fur
-    );
-    m.position.y = 0.09;
-    m.castShadow = true;
-    seg.add(m);
-    parent.add(seg);
-    parent = seg;
+  if (species.tail === "puff") {
+    // bolita esponjosa de conejo
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), lightFur);
+    puff.position.set(0, 0.02, 0.42);
+    puff.castShadow = true;
+    tail.add(puff);
+  } else if (species.tail !== "none") {
+    const cfg = {
+      long:  { n: 6, r0: 0.075, r1: 0.060, len: 0.18, arc: 0.20, side: 0.60, tip: 5 },
+      bushy: { n: 5, r0: 0.160, r1: 0.105, len: 0.22, arc: 0.16, side: 0.42, tip: 3 },
+      short: { n: 3, r0: 0.095, r1: 0.070, len: 0.14, arc: 0.24, side: 0.35, tip: 99 },
+      stub:  { n: 2, r0: 0.110, r1: 0.085, len: 0.11, arc: 0.35, side: 0.20, tip: 99 },
+      curl:  { n: 5, r0: 0.070, r1: 0.045, len: 0.11, arc: 0.55, side: 0.18, tip: 99 },
+    }[species.tail] || { n: 6, r0: 0.075, r1: 0.060, len: 0.18, arc: 0.20, side: 0.60, tip: 5 };
+    const tipMat = species.tail === "bushy"
+      ? new THREE.MeshStandardMaterial({ color: 0xfff4e2, roughness: 0.9 })
+      : (species.darkLimbs ? dark : lightFur);
+    let parent = tail;
+    for (let i = 0; i < cfg.n; i++) {
+      const seg = new THREE.Group();
+      seg.position.y = i === 0 ? 0 : cfg.len;
+      seg.rotation.x = cfg.arc;                   // cada tramo curva hacia atrás
+      seg.rotation.z = i === 0 ? cfg.side : -0.04; // el primero la abre al lado
+      const m = new THREE.Mesh(
+        new THREE.CylinderGeometry(cfg.r0 * (1 - (i / cfg.n) * 0.35), cfg.r1, cfg.len, 8),
+        i >= cfg.tip ? tipMat : (species.darkLimbs ? dark : fur)
+      );
+      m.position.y = cfg.len * 0.5;
+      m.castShadow = true;
+      seg.add(m);
+      parent.add(seg);
+      parent = seg;
+    }
   }
   rig.add(tail);
 
   g.userData.body = body;
+  g.userData.bodyBase = { x: bodySize, z: bodySize };
   g.userData.tail = tail;
   g.userData.rig = rig;
   g.userData.head = head;
@@ -477,6 +639,7 @@ function makeAvatar(color) {
   g.userData.legs = legs;
   g.userData.gun = gunMount;
   g.userData.guns = guns;
+  g.userData.animal = animalKey;
   g.userData.cat = { quad: 0, phase: 0 }; // estado de la animacion
   return g;
 }
@@ -513,7 +676,8 @@ function animateCat(g, speed, dt) {
 
   // a 4 patas el cuerpo se afina un poco: así se ven mejor las patas
   const slim = 1 - 0.18 * q;
-  u.body.scale.set(slim, 1, slim);
+  const bb = u.bodyBase || { x: 1, z: 1 };
+  u.body.scale.set(slim * bb.x, 1, slim * bb.z);
 
   // la cabeza se endereza sola para seguir mirando al frente
   u.head.rotation.x = -th * 0.85;
@@ -549,11 +713,24 @@ function animateCat(g, speed, dt) {
   u.tail.rotation.x = -0.12 * q;
 }
 
-const myAvatar = makeAvatar(0xf2913d); // tú: gatito naranja
-scene.add(myAvatar);
-const myLabel = makeLabel("Tú");
-myLabel.position.y = 2.3;
-myAvatar.add(myLabel);
+let myAvatar = null;
+let myLabel = null;
+let myChute = null;
+
+// (Re)construye tu personaje con el animal elegido en el menú.
+function rebuildMyAvatar() {
+  if (myAvatar) scene.remove(myAvatar);
+  myAvatar = makeAvatar(null, myAnimal);
+  myLabel = makeLabel("Tú");
+  myLabel.position.y = 2.3;
+  myLabel.visible = !joined;
+  myAvatar.add(myLabel);
+  myChute = makeParachute();
+  myChute.visible = false;
+  myAvatar.add(myChute);
+  scene.add(myAvatar);
+}
+rebuildMyAvatar();
 
 // ------------------------- Helicóptero + paracaídas -------------------------
 function makeHelicopter() {
@@ -637,10 +814,6 @@ heli.visible = false;
 scene.add(heli);
 let heliTimer = 0;
 const heliDir = new THREE.Vector3(1, 0, 0);
-
-const myChute = makeParachute();
-myChute.visible = false;
-myAvatar.add(myChute);
 
 const remotePlayers = new Map();
 
@@ -994,6 +1167,26 @@ function startPlaying() {
 
 $("playBtn").addEventListener("click", startPlaying);
 
+// ------------------------- Selector de animal -------------------------
+const animalGrid = $("animalGrid");
+if (animalGrid) {
+  for (const key of ANIMAL_KEYS) {
+    const a = ANIMALS[key];
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "animalCard" + (key === myAnimal ? " sel" : "");
+    b.dataset.animal = key;
+    b.innerHTML = `<span class="emoji">${a.emoji}</span><span class="aname">${a.name}</span>`;
+    b.addEventListener("click", () => {
+      myAnimal = key;
+      try { localStorage.setItem("jv_animal", key); } catch { /* ignore */ }
+      for (const c of animalGrid.children) c.classList.toggle("sel", c.dataset.animal === key);
+      rebuildMyAvatar(); // se ve al instante en el menú/partida
+    });
+    animalGrid.appendChild(b);
+  }
+}
+
 // Al morir puedes volver al menú (no se reaparece hasta la próxima partida)
 $("leaveBtn")?.addEventListener("click", () => {
   intentionalLeave = true;
@@ -1180,11 +1373,11 @@ if (isTouch) {
 // ------------------------- Red -------------------------
 function connect() {
   if (ws && ws.readyState <= 1) {
-    send({ t: "join", name: myName });
+    send({ t: "join", name: myName, animal: myAnimal });
     return;
   }
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => send({ t: "join", name: myName });
+  ws.onopen = () => send({ t: "join", name: myName, animal: myAnimal });
   ws.onmessage = (e) => onMessage(JSON.parse(e.data));
   ws.onclose = () => {
     if (!intentionalLeave) addFeed("Conexión perdida con el servidor");
@@ -1308,7 +1501,7 @@ function upsertRemote(p) {
   let r = remotePlayers.get(p.id);
   if (!r) {
     const color = new THREE.Color().setHSL((parseInt(p.id) * 0.137) % 1, 0.65, 0.55);
-    const group = makeAvatar(color.getHex());
+    const group = makeAvatar(color.getHex(), p.a);
     scene.add(group);
     const label = makeLabel(p.name);
     label.position.y = 2.3;

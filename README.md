@@ -3,11 +3,32 @@
 Battle royale **3D multijugador** (prototipo) hecho con **Three.js** y **WebSockets**.
 Corre en el navegador y funciona en red local para jugar con amigos.
 
-Los personajes son **gatitos** 🐱: cada jugador tiene su propio color, orejas, bigotes
-y una cola que se menea. Tú eres el gatito **naranja**.
+Los personajes son **animales** 🐱🐶🐰🦊🐼🐻🐷🐸. Antes de jugar **elige el tuyo**
+en el menú: **gato, perro, conejo, zorro, panda, oso, cerdo o rana**. Cada uno tiene
+orejas, morro, cola y color propios, y los demás jugadores ven el animal que elegiste.
 
-Y tienen una manía muy gatuna: **andan erguidos en 2 patas**, pero en cuanto
+Todos comparten una manía muy animal: **andan erguidos en 2 patas**, pero en cuanto
 **corren** se tumban y salen **a 4 patas** a toda velocidad. 🐾
+
+## 🐾 Animales
+
+En el **menú**, antes de pulsar **Jugar**, elige tu animal en la cuadrícula
+(se guarda en el navegador para la próxima vez):
+
+| Animal | Rasgos |
+| --- | --- |
+| 🐱 **Gato** | Orejas puntiagudas, bigotes y cola larga |
+| 🐶 **Perro** | Orejas caídas, hocico ancho y lengua fuera |
+| 🐰 **Conejo** | Orejas largas, dientes y colita de pompón |
+| 🦊 **Zorro** | Orejas grandes y cola esponjosa con punta blanca |
+| 🐼 **Panda** | Orejas y patas negras, manchas en los ojos |
+| 🐻 **Oso** | Orejas redondas, hocico grande y cuerpo más robusto |
+| 🐷 **Cerdo** | Orejas caídas, hocico con fosas y cola rizada |
+| 🐸 **Rana** | Ojos saltones arriba y boca ancha (sin orejas ni cola) |
+
+Tu animal se envía al servidor al entrar (`join`) y él lo reparte en el estado
+(`state`), así que **todos ven el animal de los demás**. Todos usan la misma
+animación (2 patas al andar, 4 patas al correr).
 
 ## ▶️ Cómo ejecutar el juego (lo más fácil)
 

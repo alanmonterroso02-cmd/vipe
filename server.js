@@ -184,6 +184,12 @@ generateLoot();
 const players = new Map();
 let nextId = 1;
 
+// Animales válidos (los mismos que en public/game.js)
+const ANIMAL_KEYS = new Set(["gato", "perro", "conejo", "zorro", "panda", "oso", "cerdo", "rana"]);
+function sanitizeAnimal(a) {
+  return ANIMAL_KEYS.has(a) ? a : "gato";
+}
+
 // Busca un sitio libre y lo MÁS LEJOS posible de los demás jugadores,
 // para que nadie aparezca pegado a otro.
 function randomSpawn(exceptId) {
@@ -219,6 +225,7 @@ function makePlayer(id, name) {
     alive: true,
     kills: 0,
     weapon: -1, // arma que lleva puesta (-1 = desarmado): sirve para que los demás la vean
+    animal: "gato", // animal elegido en el menú (lo ven los demás jugadores)
   };
 }
 
@@ -334,6 +341,7 @@ wss.on("connection", (ws) => {
     switch (msg.t) {
       case "join":
         p.name = String(msg.name || "Jugador").slice(0, 12);
+        p.animal = sanitizeAnimal(msg.animal);
         break;
 
       case "state":
@@ -515,6 +523,7 @@ function tick() {
       alive: p.alive,
       kills: p.kills,
       w: p.weapon,
+      a: p.animal,
     });
   }
   broadcast({

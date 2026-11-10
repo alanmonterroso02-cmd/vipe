@@ -26,7 +26,12 @@ No hay build, lint ni framework de tests. Verificación manual:
   red a ~20 Hz (`setTimeout(tick, 50)`). Zona que se encoge por fases (`ZONE_PHASES`,
   radio inicial `ZONE_START = 300`). Loot generado en el servidor.
 - **`public/game.js`**: cliente ESM (Three.js). Cámara 3ª persona, interpolación de jugadores
-  remotos, HUD, minimapa, inventario, armas, **salto en paracaídas**.
+  remotos, HUD, minimapa, inventario, armas, **salto en paracaídas** y **selector de animal**.
+- **Animales (selector del menú)**: `ANIMALS` en `public/game.js` define 8 especies
+  (`gato, perro, conejo, zorro, panda, oso, cerdo, rana`) con color y rasgos (orejas, morro,
+  cola). `makeAvatar(color, animalKey)` construye el modelo; todos comparten el esqueleto y
+  la animación de 2/4 patas. La elección se guarda en `localStorage` (`jv_animal`) y viaja en
+  `join` → el servidor la valida (`sanitizeAnimal`) y la reenvía en `state` como `a`.
 - **Salto en paracaídas (intro)**: al empezar partida o renacer, `revive()` llama a
   `startDrop()` (todo en `public/game.js`, **sin cambios en el servidor**). Coloca al jugador
   a `DROP_ALT = 105` en un punto libre (`isSolidAt`) dentro de la zona (`randomDropSpot`), lo
@@ -48,6 +53,7 @@ No hay build, lint ni framework de tests. Verificación manual:
 - Cliente → servidor: `join`, `state`, `hit`, `pickup`, `use`, `respawn`
 - Servidor → cliente: `welcome`, `state`, `kill`, `lootTaken`, `giveloot`, `used`, `left`
   (y, del feature final: `roundOver` / `roundStart`)
+- `join` lleva `{name, animal}`; `state.players[i].a` lleva la clave del animal.
 
 ## Convenciones y trampas
 
